@@ -1,10 +1,25 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2025-05-15',
+  compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
   future: {
     compatibilityVersion: 4,
   },
-  css: ['./app/assets/css/main.css'],
-  modules: ['@nuxt/ui', '@nuxt/eslint'],
+
+  modules: ['@nuxt/eslint', '@nuxt/image'],
+
+  nitro: {
+    storage: {
+      db: {
+        driver: 'fs',
+        base: './.data',
+      },
+    },
+  },
+
+  routeRules: {
+    '/': {
+      prerender: true,
+    },
+  },
 })
