@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { v4 as uuidv4 } from "uuid";
 definePageMeta({
   layout: false,
 });
@@ -10,7 +11,7 @@ useHead({
 
 const { isAuthenticated } = useAuth();
 if (isAuthenticated.value) {
-  await navigateTo("/", { replace: true });
+  await navigateTo(`/chats/${uuidv4()}`, { replace: true });
 }
 
 const isLoading = ref({

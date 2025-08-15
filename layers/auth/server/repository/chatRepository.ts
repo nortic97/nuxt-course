@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase-admin/firestore'
+import { $fetch } from 'ofetch'
 
 // Interfaz para la respuesta de la API
 interface ApiResponse<T> {

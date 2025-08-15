@@ -6,5 +6,5 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  modules: ['nuxt-auth-utils'],
+  modules: ['nuxt-auth-utils', '@nuxt/ui'],
 })

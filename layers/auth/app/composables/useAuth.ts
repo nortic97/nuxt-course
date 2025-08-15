@@ -1,9 +1,23 @@
 export const useAuth = () => {
   const { loggedIn, user, session, fetch, clear } = useUserSession()
 
+  // Obtener el userId desde la cookie x-user-id
+  const userIdCookie = useCookie('x-user-id')
+  const userId = computed(() => userIdCookie.value || null)
+
   const logout = async () => {
-    await clear()
-    await navigateTo('/login')
+    try {
+      await clear()
+      // Limpiar la cookie del userId
+      userIdCookie.value = null
+      // Forzar recarga completa para limpiar el estado
+      await navigateTo('/login')
+    } catch (error) {
+      console.error('Error during logout:', error)
+      // Si hay un error, igualmente limpiar cookies y redirigir
+      userIdCookie.value = null
+      await navigateTo('/login')
+    }
   }
 
   const isAuthenticated = computed(
@@ -41,6 +55,7 @@ export const useAuth = () => {
     user: readonly(user),
     session: readonly(session),
     authProvider,
+    userId: readonly(userId),
 
     refresh: fetch,
     logout,

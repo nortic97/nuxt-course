@@ -1,3 +1,5 @@
+import type { H3Event } from 'h3'
+
 export const getAuthenticatedUserId = async (
   event: H3Event
 ): Promise<string> => {

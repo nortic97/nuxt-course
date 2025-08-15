@@ -2,11 +2,22 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  future: {
-    compatibilityVersion: 4,
-  },
 
-  modules: ['@nuxt/eslint', '@nuxt/image'],
+  // Configurar layers
+  extends: [
+    './layers/base',
+    './layers/auth',
+    './layers/chat',
+    './layers/marketing'
+  ],
+
+  modules: ['@nuxt/eslint', '@nuxt/image', '@nuxt/ui'],
+
+  vite: {
+    optimizeDeps: {
+      include: ['debug'],
+    },
+  },
 
   nitro: {
     storage: {
@@ -17,9 +28,14 @@ export default defineNuxtConfig({
     },
   },
 
-  routeRules: {
-    '/': {
-      prerender: true,
+  $production: {
+    nitro: {
+      storage: {
+        db: {
+          driver: 'netlify-blobs',
+          name: 'db',
+        },
+      },
     },
   },
 })

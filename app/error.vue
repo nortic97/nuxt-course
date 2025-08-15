@@ -1,20 +1,16 @@
 <script setup lang="ts">
-const error = useError()
+const error = useError();
 
 function handleError() {
-  clearError({ redirect: '/' })
+  clearError({ redirect: "/" });
 }
 </script>
 
 <template>
-  <UContainer
-    class="flex justify-center items-center h-full p-4"
-  >
+  <UContainer class="flex justify-center items-center h-full p-4">
     <UCard variant="soft" class="min-w-md">
       <template #header>
-        <h1 class="text-lg font-bold">
-          Error - {{ error.statusCode }}
-        </h1>
+        <h1 class="text-lg font-bold">Error - {{ error.statusCode }}</h1>
       </template>
 
       <p>{{ error.message }}</p>

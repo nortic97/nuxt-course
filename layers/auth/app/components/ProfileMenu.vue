@@ -1,28 +1,27 @@
 <script setup lang="ts">
-const { isAuthenticated, userName, userAvatar, logout } =
-  useAuth()
+const { isAuthenticated, userName, userAvatar, logout } = useAuth();
 
 async function handleLogin() {
-  await navigateTo('/login')
+  await navigateTo("/login");
 }
 
 async function handleLogout() {
-  await logout()
+  await logout();
 }
 
 const menuItems = computed(() => [
   {
     label: userName.value,
-    type: 'label',
-    icon: 'i-lucide-user',
+    type: "label",
+    icon: "i-lucide-user",
   },
-  { type: 'separator' },
+  { type: "separator" },
   {
-    label: 'Sign out',
-    icon: 'i-lucide-log-out',
+    label: "Sign out",
+    icon: "i-lucide-log-out",
     onSelect: handleLogout,
   },
-])
+]);
 </script>
 
 <template>
@@ -35,12 +34,7 @@ const menuItems = computed(() => [
     />
   </UDropdownMenu>
 
-  <UButton
-    v-else
-    variant="outline"
-    size="sm"
-    @click="handleLogin"
-  >
+  <UButton v-else variant="outline" size="sm" @click="handleLogin">
     Login
   </UButton>
 </template>

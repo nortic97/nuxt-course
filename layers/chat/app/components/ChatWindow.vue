@@ -1,58 +1,148 @@
 <script setup lang="ts">
-import type {
-  Message,
-  Chat,
-} from '../../shared/types/types'
+import type { Message, Chat } from "../../shared/types/types";
 
 const props = defineProps<{
-  messages: Message[]
-  chat: Chat
-  typing: boolean
-}>()
+  messages: Message[];
+  chat: Chat;
+  typing: boolean;
+  isLoading?: boolean;
+  error?: string | null;
+}>();
 
-const emit = defineEmits(['send-message'])
+const emit = defineEmits(["send-message", "retry"]);
 
-const { showScrollButton, scrollToBottom, pinToBottom } =
-  useChatScroll()
+const { showScrollButton, scrollToBottom, pinToBottom } = useChatScroll();
+const route = useRoute();
+const isOnProjectPage = computed(() => !!route.params.projectId);
+const isAssignModalOpen = ref(false);
 
+// Estado local para el mensaje de error
+const localError = ref<string | null>(null);
+
+// Actualizar el error local cuando cambie el prop
+watch(
+  () => props.error,
+  (newError) => {
+    localError.value = newError || null;
+  }
+);
+
+// Manejar el envío de mensajes
 function handleSendMessage(message: string) {
-  emit('send-message', message)
+  if (message.trim()) {
+    localError.value = null;
+    emit("send-message", message);
+  }
 }
 
-watch(() => props.messages, pinToBottom, { deep: true })
+// Reintentar la carga si hay un error
+function handleRetry() {
+  localError.value = null;
+  emit("retry");
+}
 
-const route = useRoute()
-const isOnProjectPage = computed(
-  () => !!route.params.projectId
-)
+// Configurar el observador de mensajes
+watch(() => props.messages, pinToBottom, { deep: true });
 
-const isAssignModalOpen = ref(false)
-
+// Funciones del modal
 function openAssignModal() {
-  isAssignModalOpen.value = true
+  isAssignModalOpen.value = true;
 }
 
 function closeAssignModal() {
-  isAssignModalOpen.value = false
+  isAssignModalOpen.value = false;
 }
 </script>
 
 <template>
   <div ref="scrollContainer" class="scroll-container">
     <UContainer class="chat-container">
-      <div v-if="!messages?.length" class="empty-state">
-        <div class="empty-state-card">
-          <h2 class="empty-state-title">Start your chat</h2>
-          <ChatInput @send-message="handleSendMessage" />
+      <div
+        v-if="isLoading"
+        class="flex flex-col items-center justify-center h-full p-6"
+      >
+        <div class="flex flex-col items-center justify-center space-y-4">
+          <UIcon
+            name="i-heroicons-arrow-path"
+            class="w-12 h-12 text-primary-500 animate-spin"
+          />
+          <p class="text-gray-500 dark:text-gray-400">Cargando chat...</p>
+        </div>
+      </div>
+
+      <div
+        v-else-if="localError"
+        class="flex flex-col items-center justify-center h-full p-6 text-center"
+      >
+        <div class="p-4 max-w-md w-full">
+          <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <UIcon
+                  name="i-heroicons-exclamation-circle"
+                  class="h-5 w-5 text-red-400"
+                />
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                  Error al cargar el chat
+                </h3>
+                <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                  <p>{{ localError }}</p>
+                </div>
+                <div class="mt-4">
+                  <UButton
+                    color="error"
+                    variant="ghost"
+                    size="sm"
+                    :loading="isLoading"
+                    @click="handleRetry"
+                  >
+                    <UIcon name="i-heroicons-arrow-path" class="h-4 w-4" />
+                    <span>Reintentar</span>
+                  </UButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="!messages?.length"
+        class="flex flex-col items-center justify-center h-full p-6 text-center"
+      >
+        <div class="w-24 h-24 mb-6 text-gray-300 dark:text-gray-600">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            class="w-full h-full"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        </div>
+        <h3 class="mb-2 text-xl font-medium text-gray-900 dark:text-white">
+          ¡Bienvenido al chat!
+        </h3>
+        <p class="max-w-md mb-6 text-gray-500 dark:text-gray-400">
+          Escribe un mensaje para comenzar a chatear con el asistente.
+        </p>
+        <div class="w-full max-w-md">
+          <ChatInput :disabled="isLoading" @send-message="handleSendMessage" />
         </div>
       </div>
 
       <template v-else>
         <div class="chat-header">
           <h1 class="title">
-            <TypewriterText
-              :text="chat.title || 'Untitled Chat'"
-            />
+            <TypewriterText :text="chat.title || 'Untitled Chat'" />
           </h1>
           <UButton
             v-if="!isOnProjectPage"
@@ -83,9 +173,7 @@ function closeAssignModal() {
             </div>
           </div>
 
-          <span v-if="typing" class="typing-indicator">
-            &#9611;
-          </span>
+          <span v-if="typing" class="typing-indicator"> &#9611; </span>
         </div>
 
         <div class="message-form-container">
@@ -185,9 +273,7 @@ function closeAssignModal() {
   position: fixed;
   bottom: 1.5rem;
   max-width: 800px;
-  width: calc(
-    100% - 3rem
-  ); /* Account for container padding */
+  width: calc(100% - 3rem); /* Account for container padding */
   z-index: 10;
 }
 

@@ -1,191 +1,220 @@
-export default function useChat(chatId: string) {
-  const { chats } = useChats()
-  const chat = computed(() =>
-    chats.value.find((c) => c.id === chatId)
-  )
+// composables/useChats.ts
+import type { Chat, ChatWithMessages, Message } from '../../../middleware/server/types/types'
+import useApi from './useApi'
+import { v4 as uuidv4 } from 'uuid'
 
-  const messages = computed<Message[]>(
-    () => chat.value?.messages || []
-  )
+export default function useChats() {
+  const { fetch } = useApi()
+  const chats = useState<Chat[]>('chats', () => [])
+  const currentChat = useState<ChatWithMessages | null>('current-chat', () => null)
+  const messages = useState<Message[]>('chat-messages', () => [])
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+  const _isSending = ref(false)
 
-  const { data, execute, status } = useFetch<Message[]>(
-    `/api/chats/${chatId}/messages`,
-    {
-      default: () => [],
-      immediate: false,
-      headers: useRequestHeaders(['cookie']),
-    }
-  )
+  // Inicializar un chat vacío
+  const initializeEmptyChat = (agentId?: string): ChatWithMessages => ({
+    id: uuidv4(),
+    title: 'Nuevo chat',
+    userId: '',
+    agentId: agentId || '',
+    projectId: undefined,
+    messageCount: 0,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    messages: []
+  } as ChatWithMessages)
 
-  async function fetchMessages({
-    refresh = false,
-  }: {
-    refresh?: boolean
-  } = {}) {
-    const hasExistingMessages = messages.value.length > 1
-    const isRequestInProgress = status.value !== 'idle'
-    const shouldSkipDueToExistingState =
-      !refresh &&
-      (hasExistingMessages || isRequestInProgress)
-
-    if (shouldSkipDueToExistingState || !chat.value) {
-      return
-    }
-
-    await execute()
-    chat.value.messages = data.value
-  }
-
-  async function generateChatTitle(message: string) {
-    if (!chat.value) return
-
-    const updatedChat = await $fetch<Chat>(
-      `/api/chats/${chatId}/title`,
-      {
-        method: 'POST',
-        headers: useRequestHeaders(['cookie']),
-        body: {
-          message,
-        },
-      }
-    )
-    chat.value.title = updatedChat.title
-  }
-
-  async function sendMessage(message: string) {
-    if (!chat.value) return
-
-    if (messages.value.length === 0) {
-      generateChatTitle(message)
-    }
-
-    const optimisticUserMessage: Message = {
-      id: `optimistic-user-message-${Date.now()}`,
-      role: 'user',
-      content: message,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    messages.value.push(optimisticUserMessage)
-
-    const userMessageIndex = messages.value.length - 1
-
+  // Cargar todos los chats del usuario
+  const fetchChats = async (): Promise<Chat[]> => {
     try {
-      const newMessage = await $fetch<Message>(
-        `/api/chats/${chatId}/messages`,
-        {
-          method: 'POST',
-          headers: useRequestHeaders(['cookie']),
-          body: {
-            content: message,
-            role: 'user',
-          },
-        }
-      )
-      messages.value[userMessageIndex] = newMessage
-    } catch (error) {
-      console.error('Error sending user message', error)
-      messages.value.splice(userMessageIndex, 1)
-      return
-    }
-
-    messages.value.push({
-      id: `streaming-message-${Date.now()}`,
-      role: 'assistant',
-      content: '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    const lastMessage = messages.value[
-      messages.value.length - 1
-    ] as Message
-
-    try {
-      const response = await $fetch<ReadableStream>(
-        `/api/chats/${chatId}/messages/stream`,
-        {
-          method: 'POST',
-          responseType: 'stream',
-          headers: useRequestHeaders(['cookie']),
-          body: {
-            messages: messages.value,
-          },
-        }
-      )
-
-      const decodedStream = response.pipeThrough(
-        new TextDecoderStream()
-      )
-
-      const reader = decodedStream.getReader()
-      await reader
-        .read()
-        .then(function processText({
-          done,
-          value,
-        }): Promise<void> | void {
-          if (done) {
-            return
-          }
-
-          lastMessage.content += value
-          return reader.read().then(processText)
-        })
-    } catch (error) {
-      console.error('Error streaming message:', error)
+      isLoading.value = true
+      error.value = null
+      const response = await fetch<{ data: Chat[] }>('/api/chats')
+      chats.value = response.data || []
+      return chats.value
+    } catch (err) {
+      error.value = 'Error al cargar los chats'
+      console.error('Error fetching chats:', err)
+      throw err
     } finally {
-      await fetchMessages({ refresh: true })
+      isLoading.value = false
     }
-
-    chat.value.updatedAt = new Date()
   }
 
-  async function assignToProject(projectId: string | null) {
-    if (!chat.value) return
+  // Obtener un chat por su ID con sus mensajes
+  const getChat = async (chatId: string): Promise<ChatWithMessages> => {
+    try {
+      // Si es un nuevo chat, inicializar uno vacío
+      if (chatId === 'new') {
+        const emptyChat = initializeEmptyChat()
+        currentChat.value = emptyChat
+        messages.value = []
+        return emptyChat
+      }
 
-    const originalProjectId = chat.value.projectId
+      isLoading.value = true
+      error.value = null
+      const chat = await fetch<ChatWithMessages>(`/api/chats/${chatId}`)
+      currentChat.value = chat
+      messages.value = chat.messages || []
+      return chat
+    } catch (err) {
+      // Si hay un error, inicializar un chat vacío
+      console.error(`Error fetching chat ${chatId}:`, err)
+      const emptyChat = initializeEmptyChat()
+      currentChat.value = emptyChat
+      messages.value = []
+      return emptyChat
+    } finally {
+      isLoading.value = false
+    }
+  }
 
-    // Optimistically update the chat
-    chat.value.projectId = projectId || null
+  // Crear un nuevo chat
+  const createChat = async (options: { agentId?: string; projectId?: string } = {}) => {
+    // Si no hay agentId, inicializar un chat vacío localmente
+    if (!options.agentId) {
+      currentChat.value = initializeEmptyChat()
+      messages.value = []
+      return currentChat.value
+    }
+    try {
+      const response = await fetch<Chat>('/api/chats', {
+        method: 'POST',
+        body: options
+      })
+
+      chats.value.unshift(response)
+      return response
+    } catch (err) {
+      console.error('Error creating chat:', err)
+      throw err
+    }
+  }
+
+  // Actualizar un chat existente
+  const updateChat = async (chatId: string, updates: Partial<Chat>) => {
+    try {
+      const response = await fetch<Chat>(`/api/chats/${chatId}`, {
+        method: 'PATCH',
+        body: updates
+      })
+
+      // Actualizar en la lista local
+      const index = chats.value.findIndex(c => c.id === chatId)
+      if (index !== -1) {
+        chats.value[index] = { ...chats.value[index], ...response }
+      }
+
+      return response
+    } catch (err) {
+      console.error(`Error updating chat ${chatId}:`, err)
+      throw err
+    }
+  }
+
+  // Eliminar un chat
+  const deleteChat = async (chatId: string) => {
+    try {
+      await fetch(`/api/chats/${chatId}`, { method: 'DELETE' })
+      chats.value = chats.value.filter(chat => chat.id !== chatId)
+    } catch (err) {
+      console.error(`Error deleting chat ${chatId}:`, err)
+      throw err
+    }
+  }
+
+  // Cargar chats de un proyecto específico
+  const fetchProjectChats = async (projectId: string) => {
+    try {
+      const response = await fetch<{ data: Chat[] }>(`/api/projects/${projectId}/chats`)
+      return response.data || []
+    } catch (err) {
+      console.error(`Error fetching chats for project ${projectId}:`, err)
+      throw err
+    }
+  }
+
+  // Crear y navegar a un nuevo chat
+  const createAndNavigate = async (options: { projectId?: string; agentId?: string } = {}) => {
+    const chat = await createChat(options)
+    const path = chat.projectId
+      ? `/agents/${chat.projectId}/chats/${chat.id}`
+      : `/chats/${chat.id}`
+
+    await navigateTo(path)
+    return chat
+  }
+
+  // Enviar un mensaje
+  const sendMessage = async (content: string): Promise<Message> => {
+    if (!currentChat.value?.id) {
+      throw new Error('No hay un chat activo')
+    }
 
     try {
-      const updatedChat = await $fetch<Chat>(
-        `/api/chats/${chatId}`,
-        {
-          method: 'PUT',
-          headers: useRequestHeaders(['cookie']),
-          body: {
-            projectId,
-          },
-        }
-      )
+      _isSending.value = true
+      const newMessage = await fetch<Message>(`/api/chats/${currentChat.value.id}/messages`, {
+        method: 'POST',
+        body: { content }
+      })
 
-      // Update the chat in the chats list
-      const chatIndex = chats.value.findIndex(
-        (c) => c.id === chatId
-      )
-      if (chatIndex !== -1 && chats.value[chatIndex]) {
-        chats.value[chatIndex].projectId =
-          updatedChat.projectId
-        chats.value[chatIndex].updatedAt =
-          updatedChat.updatedAt
+      // Actualizar la lista de mensajes
+      messages.value = [...messages.value, newMessage]
+
+      // Actualizar el último mensaje en la lista de chats
+      const chatIndex = chats.value.findIndex(c => c.id === currentChat.value?.id)
+      if (chatIndex !== -1) {
+        const currentChat = chats.value[chatIndex]
+        if (currentChat) {
+          chats.value[chatIndex] = {
+            ...currentChat,
+            lastMessageAt: new Date(),
+            messageCount: (currentChat.messageCount || 0) + 1,
+            // Asegurarse de que los campos requeridos estén presentes
+            userId: currentChat.userId,
+            agentId: currentChat.agentId,
+            isActive: currentChat.isActive !== false
+          }
+        }
       }
-    } catch (error) {
-      console.error(
-        'Error assigning chat to project',
-        error
-      )
-      // Revert optimistic update
-      chat.value.projectId = originalProjectId
-      throw error
+
+      return newMessage
+    } catch (err) {
+      error.value = 'Error al enviar el mensaje'
+      console.error('Error sending message:', err)
+      throw err
+    } finally {
+      _isSending.value = false
     }
+  }
+
+  // Limpiar el chat actual
+  const clearCurrentChat = (): void => {
+    currentChat.value = null
+    messages.value = []
   }
 
   return {
-    chat,
-    messages,
+    // State
+    chats: readonly(chats),
+    currentChat: readonly(currentChat),
+    messages: readonly(messages),
+    isLoading: readonly(isLoading),
+    error: readonly(error),
+    isSending: readonly(_isSending),
+
+    // Methods
+    fetchChats,
+    getChat,
+    createChat,
+    updateChat,
+    deleteChat,
+    fetchProjectChats,
+    createAndNavigate,
     sendMessage,
-    fetchMessages,
-    assignToProject,
+    clearCurrentChat
   }
 }
