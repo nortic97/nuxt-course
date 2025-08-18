@@ -18,7 +18,6 @@ export default function useChats() {
     title: 'Nuevo chat',
     userId: '',
     agentId: agentId || '',
-    projectId: undefined,
     messageCount: 0,
     isActive: true,
     createdAt: new Date(),
@@ -73,7 +72,7 @@ export default function useChats() {
   }
 
   // Crear un nuevo chat
-  const createChat = async (options: { agentId?: string; projectId?: string } = {}) => {
+  const createChat = async (options: { agentId?: string } = {}) => {
     // Si no hay agentId, inicializar un chat vacío localmente
     if (!options.agentId) {
       currentChat.value = initializeEmptyChat()
@@ -126,23 +125,10 @@ export default function useChats() {
     }
   }
 
-  // Cargar chats de un proyecto específico
-  const fetchProjectChats = async (projectId: string) => {
-    try {
-      const response = await fetch<{ data: Chat[] }>(`/api/projects/${projectId}/chats`)
-      return response.data || []
-    } catch (err) {
-      console.error(`Error fetching chats for project ${projectId}:`, err)
-      throw err
-    }
-  }
-
   // Crear y navegar a un nuevo chat
-  const createAndNavigate = async (options: { projectId?: string; agentId?: string } = {}) => {
+  const createAndNavigate = async (options: { agentId?: string } = {}) => {
     const chat = await createChat(options)
-    const path = chat.projectId
-      ? `/agents/${chat.projectId}/chats/${chat.id}`
-      : `/chats/${chat.id}`
+    const path = `/chats/${chat.id}`
 
     await navigateTo(path)
     return chat
@@ -212,7 +198,6 @@ export default function useChats() {
     createChat,
     updateChat,
     deleteChat,
-    fetchProjectChats,
     createAndNavigate,
     sendMessage,
     clearCurrentChat

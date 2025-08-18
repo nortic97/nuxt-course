@@ -39,8 +39,7 @@ export default function useChats() {
         lastMessageAt: chat.updatedAt || chat.createdAt || new Date(),
         createdAt: chat.createdAt || new Date(),
         updatedAt: chat.updatedAt || chat.createdAt || new Date(),
-        isActive: true,
-        projectId: undefined
+        isActive: true
       } as Chat))
     } catch (err) {
       console.error('Error al cargar chats del agente:', err)
@@ -86,9 +85,12 @@ export default function useChats() {
   }
 
   // Función para convertir Timestamp a Date si es necesario
-  const parseDate = (date: Date | { toDate: () => Date } | null | undefined): Date | null => {
+  const parseDate = (date: Date | { toDate: () => Date } | string | null | undefined): Date | null => {
     if (!date) return null
-    return date instanceof Date ? date : date.toDate()
+    if (date instanceof Date) return date
+    if (typeof date === 'string') return new Date(date)
+    if (typeof (date as any).toDate === 'function') return (date as any).toDate()
+    return null
   }
 
   // Obtener mensajes recientes
@@ -132,13 +134,12 @@ export default function useChats() {
   }
 
   // Inicializar un chat vacío localmente
-  function initializeEmptyChat(agentId?: string, projectId?: string): Chat {
+  function initializeEmptyChat(agentId?: string): Chat {
     return {
       id: uuidv4(),
       title: 'Nuevo chat',
       userId: session.value?.databaseUserId?.toString() || '',
       agentId: agentId || '',
-      projectId: projectId,
       messageCount: 0,
       isActive: true,
       createdAt: new Date(),
@@ -146,7 +147,7 @@ export default function useChats() {
     } as Chat
   }
 
-  async function createChat(agentId: string, projectId?: string): Promise<Chat | null> {
+  async function createChat(agentId: string): Promise<Chat | null> {
     if (isCreating.value) {
       //console.warn('Ya hay una solicitud de creación de chat en curso')
       return null
@@ -161,7 +162,7 @@ export default function useChats() {
     const { session } = useAuth()
     const userId = session.value?.databaseUserId
     if (!userId) {
-      const newChat = initializeEmptyChat(agentId, projectId)
+      const newChat = initializeEmptyChat(agentId)
       emptyChat.value = newChat
       return newChat
     }
@@ -169,8 +170,7 @@ export default function useChats() {
     isCreating.value = true
     try {
       const requestBody = {
-        agentId,
-        ...(projectId && { projectId })
+        agentId
       }
 
       const response = await $fetch<ApiResponse<Chat>>('/api/chats', {
@@ -192,7 +192,7 @@ export default function useChats() {
     } catch (error) {
       console.error('Error creating chat:', error)
       // Si hay un error, devolver un chat local
-      const newChat = initializeEmptyChat(agentId, projectId)
+      const newChat = initializeEmptyChat(agentId)
       emptyChat.value = newChat
       return newChat
     } finally {
@@ -233,21 +233,38 @@ export default function useChats() {
     }
   }
 
-  // Obtener chats por proyecto
-  function chatsInProject(projectId: string) {
-    return computed(() =>
-      chats.value.filter(chat => chat.projectId === projectId)
-    )
+  // Eliminar un chat
+  async function deleteChat(chatId: string) {
+    try {
+      const response = await $fetch<ApiResponse<null>>(`/api/chats/${chatId}`, {
+        method: 'DELETE',
+        headers: {
+          ...useRequestHeaders(['cookie']),
+          'x-user-id': userId.value?.toString() || ''
+        }
+      })
+
+      if (response.success) {
+        // Eliminar el chat de la lista local
+        chats.value = chats.value.filter(c => c.id !== chatId)
+      } else {
+        throw new Error(response.error || 'Error al eliminar el chat')
+      }
+    } catch (err) {
+      console.error('Error deleting chat:', err)
+      error.value = 'No se pudo eliminar el chat. Por favor, inténtalo de nuevo.'
+      // No lanzar el error para no interrumpir la UI, el error se muestra en la variable 'error'
+    }
   }
 
   // Crear y navegar a un nuevo chat
   async function createChatAndNavigate(
-    options: { agentId?: string; projectId?: string } = {}
+    options: { agentId?: string } = {}
   ) {
     // Usar el agente por defecto si no se proporciona uno
     const agentId = options.agentId || '50e79d2f-994e-4155-b2cd-c120c3da2c09'
 
-    const chat = await createChat(agentId, options.projectId)
+    const chat = await createChat(agentId)
 
     if (!chat) {
       console.error('No se pudo crear el chat')
@@ -255,9 +272,7 @@ export default function useChats() {
     }
 
     // Navegar a la ruta correspondiente
-    const route = chat.projectId
-      ? `/agents/${chat.projectId}/chats/${chat.id}`
-      : `/chats/${chat.id}`
+    const route = `/chats/${chat.id}`
 
     await navigateTo(route)
     return chat
@@ -279,8 +294,8 @@ export default function useChats() {
     chats,
     createChat,
     createChatAndNavigate,
-    chatsInProject,
     updateChat,
+    deleteChat,
     fetchChats,
     prefetchChatMessages,
     emptyChat: readonly(emptyChat),

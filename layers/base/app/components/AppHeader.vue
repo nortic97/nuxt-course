@@ -59,7 +59,6 @@ const fetchAgents = async () => {
 
 const createChatAndNavigate = async (options: {
   agentId: string;
-  projectId?: string;
 }) => {
   if (!options.agentId) {
     error.value = "No agent selected. Please try again.";
@@ -68,10 +67,10 @@ const createChatAndNavigate = async (options: {
 
   try {
     const response = await $fetch<
-      ApiResponse<{ id: string; projectId?: string }>
+      ApiResponse<{ id: string }>
     >("/api/chats", {
       method: "POST",
-      body: { agentId: options.agentId, projectId: options.projectId },
+      body: { agentId: options.agentId },
     });
 
     if (!response.success) {
@@ -81,11 +80,7 @@ const createChatAndNavigate = async (options: {
     const chat = response.data;
 
     if (chat?.id) {
-      if (options.projectId) {
-        await navigateTo(`/agents/${options.projectId}/chats/${chat.id}`);
-      } else {
-        await navigateTo(`/chats/${chat.id}`);
-      }
+      await navigateTo(`/chats/${chat.id}`);
     } else {
       throw new Error("Invalid chat response from server");
     }

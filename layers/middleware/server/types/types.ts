@@ -65,7 +65,6 @@ export interface Chat extends DocumentBase {
     title?: string
     userId: string
     agentId: string
-    projectId?: string
     messageCount: number
     lastMessageAt?: Date | Timestamp | null
     isActive: boolean

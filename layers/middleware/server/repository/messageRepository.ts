@@ -42,7 +42,7 @@ export async function createMessage(data: {
         role: data.role,
         userId: data.userId,
         isActive: true,
-        metadata: data.metadata || undefined
+        metadata: data.metadata || {}
     }
 
     const newMessage = await createDocument<Message>(COLLECTION_NAME, messageData)

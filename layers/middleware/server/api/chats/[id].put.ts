@@ -39,9 +39,6 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
         if (body.title !== undefined) {
             updateData.title = body.title?.trim() || 'Chat sin título'
         }
-        if (body.projectId !== undefined) {
-            updateData.projectId = body.projectId?.trim() || undefined
-        }
 
         // Actualizar el chat
         const updatedChat = await updateChat(chatId, userId, updateData)

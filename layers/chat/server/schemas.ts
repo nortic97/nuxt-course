@@ -28,35 +28,15 @@ export const CreateMessageSchema = z
   })
   .strict()
 
-// Project related schemas
-export const CreateProjectSchema = z
-  .object({
-    name: z.string().min(1),
-  })
-  .strict()
-
-export const UpdateProjectSchema = z
-  .object({
-    name: z.string().min(1),
-  })
-  .strict()
-
 // Chat related schemas
 export const CreateChatSchema = z
   .object({
     title: z.string().min(1).optional(),
-    projectId: z.string().uuid().optional(),
   })
   .strict()
 
 export const UpdateChatTitleSchema = z
   .object({
     message: z.string().min(1),
-  })
-  .strict()
-
-export const UpdateChatSchema = z
-  .object({
-    projectId: z.string().uuid(),
   })
   .strict()

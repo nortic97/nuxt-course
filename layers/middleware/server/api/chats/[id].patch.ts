@@ -1,8 +1,9 @@
-import { createChat } from '../../repository/chatRepository'
+import { updateChat } from '../../repository/chatRepository'
 import type { ApiResponse, Chat } from '../../types/types'
 
 export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
     try {
+        const chatId = getRouterParam(event, 'id') as string
         const body = await readBody(event)
         const userId = getHeader(event, 'x-user-id') as string
 
@@ -15,6 +16,15 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
             }
         }
 
+        // Validar que se proporcione el chatId
+        if (!chatId) {
+            return {
+                success: false,
+                message: 'ID de chat requerido',
+                error: 'El parámetro id es obligatorio'
+            }
+        }
+
         // Validar que se envió el body
         if (!body) {
             return {
@@ -24,51 +34,47 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
             }
         }
 
-        // Validar campos requeridos
-        if (!body.agentId) {
+        // Preparar datos de actualización (solo campos permitidos)
+        const updateData: Partial<Chat> = {}
+        
+        if (body.title !== undefined) {
+            updateData.title = body.title.trim()
+        }
+
+        // Validar que hay algo que actualizar
+        if (Object.keys(updateData).length === 0) {
             return {
                 success: false,
-                message: 'Agent ID requerido',
-                error: 'El campo agentId es obligatorio'
+                message: 'No hay datos para actualizar',
+                error: 'Debe proporcionar al menos un campo para actualizar'
             }
         }
 
-        // Preparar datos del chat
-        const chatData: any = {
-            userId: userId,
-            agentId: body.agentId.trim()
-        }
+        // Actualizar el chat
+        const updatedChat = await updateChat(chatId, userId, updateData)
 
-        // Solo agregar campos opcionales si tienen valor
-        if (body.title?.trim()) {
-            chatData.title = body.title.trim()
+        if (!updatedChat) {
+            return {
+                success: false,
+                message: 'Error al actualizar el chat',
+                error: 'No se pudo actualizar el chat'
+            }
         }
-
-        // Crear el chat
-        const newChat = await createChat(chatData)
 
         return {
             success: true,
-            message: 'Chat creado exitosamente',
-            data: newChat
+            message: 'Chat actualizado exitosamente',
+            data: updatedChat
         }
     } catch (error) {
-        console.error('Error al crear chat:', error)
+        console.error('Error al actualizar chat:', error)
 
         // Manejar errores específicos
         if (error instanceof Error) {
-            if (error.message.includes('no tiene acceso a este agente')) {
+            if (error.message.includes('no encontrado o no tienes permisos')) {
                 return {
                     success: false,
-                    message: 'Acceso denegado',
-                    error: error.message
-                }
-            }
-
-            if (error.message.includes('no existe o no está activo')) {
-                return {
-                    success: false,
-                    message: 'Usuario o agente inválido',
+                    message: 'Chat no encontrado',
                     error: error.message
                 }
             }
@@ -84,7 +90,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
 
         return {
             success: false,
-            message: 'Error al crear el chat',
+            message: 'Error al actualizar el chat',
             error: error instanceof Error ? error.message : 'Error desconocido'
         }
     }

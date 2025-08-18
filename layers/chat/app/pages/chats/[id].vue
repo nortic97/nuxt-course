@@ -61,6 +61,7 @@ const {
   isLoading: isChatLoading,
   error: chatError,
   prefetchChatMessages,
+  fetchChats,
   chats,
 } = useChats();
 
@@ -162,7 +163,8 @@ async function loadChat() {
 
       if (existingChat) {
         // Si encontramos el chat en la lista, usamos esos datos
-        chat.value = { ...existingChat, messages: messages.value };
+        chat.value = { ...existingChat, messages: existingChat.messages || [] };
+        messages.value = existingChat.messages || [];
 
         // Luego intentamos cargar los mensajes más recientes
         await prefetchChatMessages();
@@ -170,7 +172,8 @@ async function loadChat() {
         // Actualizamos con los datos más recientes si están disponibles
         const updatedChat = chats.value.find((c) => c.id === chatId);
         if (updatedChat) {
-          chat.value = { ...updatedChat, messages: messages.value };
+          chat.value = { ...updatedChat, messages: updatedChat.messages || [] };
+          messages.value = updatedChat.messages || [];
         }
       } else {
         // Si no encontramos el chat, intentamos cargarlo directamente
@@ -208,7 +211,7 @@ const handleSendMessage = async (content: string) => {
       logger.info("Creando chat automáticamente", { chatId, agentId });
       
       // Crear el chat con el chatId como ID
-      const response = await apiFetch<{ data: Chat }>("/api/chats", {
+      const response = await apiFetch<{ success: boolean; data?: Chat; message?: string; error?: string }>("/api/chats", {
         method: "POST",
         body: { 
           agentId: agentId,
@@ -216,14 +219,26 @@ const handleSendMessage = async (content: string) => {
         },
       });
 
-      if (response.data) {
+      logger.info("Respuesta de creación de chat", { response });
+
+      if (response.success && response.data) {
         chat.value = {
           ...response.data,
           messages: []
         } as ChatWithMessages;
         messages.value = [];
+        
+        // Refrescar el historial de chats después de crear uno nuevo
+        try {
+          await fetchChats();
+          logger.info("Historial de chats actualizado después de crear nuevo chat");
+        } catch (refreshError) {
+          logger.warn("No se pudo actualizar el historial de chats", { error: refreshError });
+        }
       } else {
-        throw new Error("No se pudo crear el chat");
+        const errorMsg = response.error || response.message || "No se pudo crear el chat";
+        logger.error("Error en respuesta de creación de chat", { response });
+        throw new Error(errorMsg);
       }
     }
 
@@ -259,6 +274,21 @@ const handleSendMessage = async (content: string) => {
         messages.value[messageIndex] = serverMessage;
       } else {
         messages.value.push(serverMessage);
+      }
+
+      // Si es el primer mensaje del chat y no tiene título, actualizarlo
+      if (chat.value && (!chat.value.title || chat.value.title === 'Nuevo chat') && messages.value.length === 1) {
+        try {
+          const titleContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
+          await apiFetch(`/api/chats/${chat.value.id}`, {
+            method: 'PATCH',
+            body: { title: titleContent }
+          });
+          // Actualizar el título localmente
+          chat.value.title = titleContent;
+        } catch (err) {
+          logger.warn('No se pudo actualizar el título del chat', { error: err });
+        }
       }
     }
   } catch (err) {

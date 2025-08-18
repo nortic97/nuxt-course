@@ -1,5 +1,6 @@
 import { firestoreClient } from '../utils/firebase.client'
 import { Timestamp } from 'firebase-admin/firestore'
+import { v4 as uuidv4 } from 'uuid'
 import {
     createDocument,
     updateDocument,
@@ -24,7 +25,6 @@ export async function createChat(data: {
     title?: string
     userId: string
     agentId: string
-    projectId?: string
 }): Promise<Chat> {
     // Validar campos requeridos
     const validation = validateRequiredFields(data, ['userId', 'agentId'])
@@ -44,18 +44,21 @@ export async function createChat(data: {
         throw new Error(`No tiene acceso a este agente: ${accessCheck.reason}`)
     }
 
+    // Generar un ID de chat si no se proporciona uno
+    const chatId = data.id || uuidv4()
+
     // Crear el chat
-    const chatData = {
+    const chatData: any = {
+        id: chatId,
         title: data.title?.trim() || 'Nuevo Chat',
         userId: data.userId,
         agentId: data.agentId,
-        projectId: data.projectId || undefined,
         isActive: true,
         messageCount: 0,
         lastMessageAt: Timestamp.now()
     }
 
-    return await createDocument<Chat>(COLLECTION_NAME, chatData, data.id)
+    return await createDocument<Chat>(COLLECTION_NAME, chatData, chatId)
 }
 
 // Obtener chat por ID
@@ -133,32 +136,6 @@ export async function getChatsByUser(
     })
 }
 
-// Obtener chats por proyecto
-export async function getChatsByProject(
-    projectId: string,
-    userId: string,
-    params: PaginationParams = {}
-): Promise<{
-    documents: Chat[]
-    total: number
-    hasNext: boolean
-    hasPrev: boolean
-}> {
-    const { page = 1, limit = 10, orderBy = 'lastMessageAt', orderDirection = 'desc' } = params
-
-    return await getPaginatedDocuments<Chat>(COLLECTION_NAME, {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-        where: [
-            { field: 'userId', operator: '==', value: userId },
-            { field: 'projectId', operator: '==', value: projectId },
-            { field: 'isActive', operator: '==', value: true }
-        ]
-    })
-}
-
 // Actualizar chat
 export async function updateChat(
     id: string,
@@ -176,9 +153,6 @@ export async function updateChat(
 
     if (data.title !== undefined) {
         updateData.title = data.title.trim() || 'Chat sin título'
-    }
-    if (data.projectId !== undefined) {
-        updateData.projectId = data.projectId
     }
 
     return await updateDocument<Chat>(COLLECTION_NAME, id, updateData)

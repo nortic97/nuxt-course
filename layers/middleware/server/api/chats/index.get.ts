@@ -1,4 +1,4 @@
-import { getChatsByUser, getChatsByProject, searchChatsByTitle } from '../../repository/chatRepository'
+import { getChatsByUser, searchChatsByTitle } from '../../repository/chatRepository'
 import type { PaginatedResponse, Chat } from '../../types/types'
 
 export default defineEventHandler(async (event): Promise<PaginatedResponse<Chat>> => {
@@ -28,7 +28,6 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Chat>
             limit = 10,
             orderBy = 'lastMessageAt',
             orderDirection = 'desc',
-            projectId,
             search
         } = query
 
@@ -44,10 +43,6 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Chat>
         // Si hay búsqueda por título
         if (search && typeof search === 'string') {
             result = await searchChatsByTitle(userId, search, paginationParams)
-        }
-        // Si hay filtro por proyecto
-        else if (projectId && typeof projectId === 'string') {
-            result = await getChatsByProject(projectId, userId, paginationParams)
         }
         // Obtener todos los chats del usuario
         else {
