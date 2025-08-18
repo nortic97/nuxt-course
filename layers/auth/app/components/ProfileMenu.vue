@@ -27,10 +27,10 @@ const menuItems = computed(() => [
 <template>
   <UDropdownMenu v-if="isAuthenticated" :items="menuItems">
     <UAvatar
-      :src="userAvatar || undefined"
-      :alt="userName"
-      size="sm"
-      class="cursor-pointer"
+        :src="userAvatar || undefined"
+        :alt="userName"
+        size="sm"
+        class="cursor-pointer"
     />
   </UDropdownMenu>
 

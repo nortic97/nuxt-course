@@ -1,9 +1,39 @@
+// Logger que solo muestra mensajes en desarrollo
+const logger = {
+  error: (message: string, error: any, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.error(`[AUTH] ${message}`, { error, ...context });
+    }
+  },
+  warn: (message: string, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.warn(`[AUTH] ${message}`, context);
+    }
+  },
+  info: (message: string, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.log(`[AUTH] ${message}`, context);
+    }
+  }
+};
+
 export const useAuth = () => {
   const { loggedIn, user, session, fetch, clear } = useUserSession()
 
-  // Obtener el userId desde la cookie x-user-id
+  // Mantener cookie x-user-id sincronizada con la sesión
   const userIdCookie = useCookie('x-user-id')
-  const userId = computed(() => userIdCookie.value || null)
+  
+  // Obtener el userId desde la sesión de Nuxt
+  const userId = computed(() => session.value?.databaseUserId || null)
+  
+  // Sincronizar cookie con sesión cuando cambie
+  watch(userId, (newUserId) => {
+    if (newUserId) {
+      userIdCookie.value = newUserId.toString()
+    } else {
+      userIdCookie.value = null
+    }
+  }, { immediate: true })
 
   const logout = async () => {
     try {
@@ -13,7 +43,9 @@ export const useAuth = () => {
       // Forzar recarga completa para limpiar el estado
       await navigateTo('/login')
     } catch (error) {
-      console.error('Error during logout:', error)
+      logger.error('Error durante el cierre de sesión', error, { 
+        userId: userId.value 
+      })
       // Si hay un error, igualmente limpiar cookies y redirigir
       userIdCookie.value = null
       await navigateTo('/login')

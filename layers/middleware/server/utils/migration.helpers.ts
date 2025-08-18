@@ -1,18 +1,19 @@
 import { firestoreClient } from './firebase.client'
 import { updateTimestamp } from './firestore.helpers'
+import { logger } from './logger'
 
 /**
  * Migrar documentos existentes para agregar el campo ID
  * USAR SOLO UNA VEZ para migrar datos existentes
  */
 export async function migrateDocumentsAddId(collectionName: string): Promise<void> {
-    console.log(`🔄 Iniciando migración de ${collectionName}...`)
+    logger.info(`Iniciando migración de ${collectionName}...`)
 
     try {
         const snapshot = await firestoreClient.collection(collectionName).get()
 
         if (snapshot.empty) {
-            console.log(`✅ No hay documentos en ${collectionName} para migrar`)
+            logger.info(`No hay documentos en ${collectionName} para migrar`)
             return
         }
 
@@ -35,12 +36,12 @@ export async function migrateDocumentsAddId(collectionName: string): Promise<voi
 
         if (count > 0) {
             await batch.commit()
-            console.log(`✅ Migración completada: ${count} documentos actualizados en ${collectionName}`)
+            logger.info(`Migración completada: ${count} documentos actualizados en ${collectionName}`)
         } else {
-            console.log(`✅ Todos los documentos en ${collectionName} ya tienen campo ID`)
+            logger.info(`Todos los documentos en ${collectionName} ya tienen campo ID`)
         }
     } catch (error) {
-        console.error(`❌ Error en migración de ${collectionName}:`, error)
+        logger.error(`Error en migración de ${collectionName}`, error as Error, { collectionName })
         throw error
     }
 }
@@ -55,5 +56,7 @@ export async function migrateAllCollections(): Promise<void> {
         await migrateDocumentsAddId(collection)
     }
 
-    console.log('🎉 Migración completa de todas las colecciones')
+    logger.info('Migración completa de todas las colecciones', {
+      collections: collections.join(', ')
+    })
 }

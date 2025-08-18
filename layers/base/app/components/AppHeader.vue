@@ -156,14 +156,14 @@ function handleToggleSidebar() {
         @click="handleToggleSidebar"
       />
       <div class="relative">
-        <UButton
-          icon="i-lucide-plus"
-          :loading="isLoading"
-          :disabled="isLoading"
-          @click="handleCreateChat"
-        >
-          New Chat
-        </UButton>
+<!--        <UButton-->
+<!--          icon="i-lucide-plus"-->
+<!--          :loading="isLoading"-->
+<!--          :disabled="isLoading"-->
+<!--          @click="handleCreateChat"-->
+<!--        >-->
+<!--          New Chat-->
+<!--        </UButton>-->
 
         <Transition
           enter-active-class="transition-opacity duration-200"

@@ -336,7 +336,9 @@ export async function getMessagesByUserAndAgent(
     const chatData = userChatsQuery.docs.map(doc => ({
         id: doc.id,
         title: doc.data().title,
-        messageCount: doc.data().messageCount || 0
+        messageCount: doc.data().messageCount || 0,
+        createdAt: doc.data().createdAt,
+        updatedAt: doc.data().updatedAt
     }))
 
     if (chatIds.length === 0) {

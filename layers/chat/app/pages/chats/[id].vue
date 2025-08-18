@@ -6,6 +6,25 @@ import type {
   ChatWithMessages,
 } from "../../../shared/types/types";
 
+// Logger que solo muestra mensajes en desarrollo
+const logger = {
+  error: (message: string, error: any, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.error(`[CHAT] ${message}`, { error, ...context });
+    }
+  },
+  warn: (message: string, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.warn(`[CHAT] ${message}`, context);
+    }
+  },
+  info: (message: string, context: Record<string, any> = {}) => {
+    if (process.dev) {
+      console.log(`[CHAT] ${message}`, context);
+    }
+  }
+};
+
 definePageMeta({
   middleware: "auth",
 });
@@ -13,6 +32,29 @@ definePageMeta({
 const route = useRoute();
 const chatId = route.params.id as string;
 const isNewChat = chatId === "new";
+const agentId = route.query.agentId as string;
+
+// Usar cookies para rastrear el agente seleccionado
+const selectedAgentCookie = useCookie('x-agent-id', {
+  default: () => null,
+  maxAge: 60 * 60 * 24 * 7 // 7 días
+});
+
+// Computed para verificar si hay un agente válido seleccionado
+const hasValidAgent = computed(() => {
+  // Debe haber agentId en la URL y debe coincidir con la cookie (si existe)
+  if (!agentId) return false;
+  
+  // Si no hay cookie, establecerla con el agentId de la URL
+  if (!selectedAgentCookie.value) {
+    selectedAgentCookie.value = agentId;
+    return true;
+  }
+  
+  // Verificar que coincidan para seguridad
+  return selectedAgentCookie.value === agentId;
+});
+
 
 // Inicializar el estado del chat
 const {
@@ -21,6 +63,9 @@ const {
   prefetchChatMessages,
   chats,
 } = useChats();
+
+// Usar el composable de API
+const { fetch: apiFetch } = useApi();
 
 // Estado local
 const chat = ref<ChatWithMessages | null>(null);
@@ -32,18 +77,28 @@ const typing = ref(false);
 // Función para crear un nuevo chat
 async function createNewChat(): Promise<ChatWithMessages | null> {
   try {
-    // Usamos un agente por defecto o permitimos que el backend lo asigne
-    const response = await $fetch<{ data: Chat }>("/api/chats", {
+    if (!agentId) {
+      throw new Error("Se requiere un agentId para crear un nuevo chat");
+    }
+
+    const response = await apiFetch<{ data: Chat }>("/api/chats", {
       method: "POST",
-      headers: useRequestHeaders(["cookie"]),
-      body: { agentId: "default" }, // Usamos un agente por defecto
+      body: { agentId: agentId },
     });
 
     if (!response.data) return null;
+
+    return {
+      ...response.data,
+      messages: []
+    } as ChatWithMessages;
   } catch (err) {
-    console.error("Error al crear el chat:", err);
-    error.value =
-      "No se pudo crear un nuevo chat. Por favor, inténtalo de nuevo.";
+    logger.error("Error al crear el chat", err, {
+      chatId: 'new',
+      isNewChat: true,
+      agentId: agentId
+    });
+    error.value = "No se pudo crear un nuevo chat. Por favor, inténtalo de nuevo.";
     return null;
   }
 }
@@ -54,12 +109,15 @@ async function sendMessage(
   chatId: string
 ): Promise<Message | null> {
   try {
-    const response = await $fetch<{ data: Message }>(
-      `/api/chats/${chatId}/messages`,
+    const response = await apiFetch<{ data: Message }>(
+      `/api/messages`,
       {
         method: "POST",
-        headers: useRequestHeaders(["cookie"]),
-        body: { content },
+        body: { 
+          content,
+          chatId,
+          role: "user"
+        },
       }
     );
     return response.data || null;
@@ -86,9 +144,11 @@ async function loadChat() {
         throw new Error("No se pudo crear un nuevo chat");
       }
     } catch (err) {
-      console.error("Error creating chat:", err);
-      error.value =
-        "No se pudo crear un nuevo chat. Por favor, inténtalo de nuevo.";
+    logger.error("Error al cargar el chat", err, {
+      chatId: chatId,
+      isNewChat: isNewChat
+    });
+    error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo más tarde.";
     } finally {
       isLoading.value = false;
     }
@@ -114,11 +174,8 @@ async function loadChat() {
         }
       } else {
         // Si no encontramos el chat, intentamos cargarlo directamente
-        const response = await $fetch<{ data: ChatWithMessages }>(
-          `/api/chats/${chatId}`,
-          {
-            headers: useRequestHeaders(["cookie"]),
-          }
+        const response = await apiFetch<{ data: ChatWithMessages }>(
+          `/api/chats/${chatId}`
         );
 
         if (response?.data) {
@@ -127,7 +184,10 @@ async function loadChat() {
         }
       }
     } catch (err) {
-      console.error("Error loading chat:", err);
+      logger.error("Error al cargar el chat", err, {
+        chatId: chatId,
+        isNewChat: isNewChat
+      });
       error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo.";
     } finally {
       isLoading.value = false;
@@ -137,10 +197,39 @@ async function loadChat() {
 
 // Manejar el envío de mensajes
 const handleSendMessage = async (content: string) => {
-  if (!content.trim() || !chat.value) return;
+  if (!content.trim()) return;
 
   try {
     typing.value = true;
+    error.value = null;
+
+    // Si no hay chat pero tenemos un chatId válido, crear el chat primero
+    if (!chat.value && chatId && chatId !== 'new' && agentId) {
+      logger.info("Creando chat automáticamente", { chatId, agentId });
+      
+      // Crear el chat con el chatId como ID
+      const response = await apiFetch<{ data: Chat }>("/api/chats", {
+        method: "POST",
+        body: { 
+          agentId: agentId,
+          chatId: chatId // Usar el chatId de la URL como ID del chat
+        },
+      });
+
+      if (response.data) {
+        chat.value = {
+          ...response.data,
+          messages: []
+        } as ChatWithMessages;
+        messages.value = [];
+      } else {
+        throw new Error("No se pudo crear el chat");
+      }
+    }
+
+    if (!chat.value) {
+      throw new Error("No hay chat disponible para enviar el mensaje");
+    }
 
     // Crear un mensaje local inmediatamente para mejor UX
     const tempId = `temp-${Date.now()}`;
@@ -172,12 +261,13 @@ const handleSendMessage = async (content: string) => {
         messages.value.push(serverMessage);
       }
     }
-
-    error.value = null;
   } catch (err) {
-    console.error("Error sending message:", err);
-    error.value =
-      "No se pudo enviar el mensaje. Por favor, inténtalo de nuevo.";
+    logger.error("Error al enviar el mensaje", err, {
+      chatId: chatId,
+      messageLength: content.length,
+      agentId: agentId
+    });
+    error.value = "No se pudo enviar el mensaje. Por favor, inténtalo de nuevo.";
   } finally {
     typing.value = false;
   }
@@ -244,7 +334,35 @@ useHead({
         </div>
       </div>
       <div v-else class="flex items-center justify-center h-full">
-        <div class="text-center p-8">
+        <!-- Si hay un agente válido y chatId válido (UUID), mostrar input de chat -->
+        <div v-if="hasValidAgent && chatId && chatId !== 'new' && chatId.length > 10" class="w-full max-w-2xl p-8">
+          <div class="text-center mb-8">
+            <UIcon
+              name="i-heroicons-chat-bubble-left-right"
+              class="w-16 h-16 text-gray-300 mx-auto mb-4"
+            />
+            <h2 class="text-xl font-semibold text-gray-700 mb-2">Nuevo Chat</h2>
+            <p class="text-gray-500">
+              Escribe tu primer mensaje para comenzar la conversación.
+            </p>
+          </div>
+          <div class="w-full">
+            <ChatInput :disabled="isLoading" @send-message="handleSendMessage" />
+          </div>
+        </div>
+        <!-- Mensaje cuando no hay agente seleccionado -->
+        <div v-else-if="!hasValidAgent" class="text-center p-8">
+          <UIcon
+            name="i-heroicons-user-circle"
+            class="w-16 h-16 text-gray-300 mx-auto mb-4"
+          />
+          <h2 class="text-xl font-semibold text-gray-700">Selecciona un Agente</h2>
+          <p class="text-gray-500 mt-2">
+            Haz clic en un agente de la sección "Mis Agentes" para comenzar a chatear.
+          </p>
+        </div>
+        <!-- Mensaje por defecto cuando no hay chatId válido -->
+        <div v-else class="text-center p-8">
           <UIcon
             name="i-heroicons-chat-bubble-left-right"
             class="w-16 h-16 text-gray-300 mx-auto mb-4"

@@ -35,6 +35,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
 
         // Preparar datos del chat
         const chatData = {
+            id: body.chatId?.trim() || undefined, // Permitir ID personalizado
             title: body.title?.trim() || undefined,
             userId: userId,
             agentId: body.agentId.trim(),

@@ -64,6 +64,8 @@ export default function useAgentCategories() {
             console.error('Error fetching user agent categories:', err)
             error.value = 'Error al cargar las categorías de agentes'
             categoriesWithAgents.value = []
+        } finally {
+            isLoading.value = false
         }
     }
 
@@ -72,7 +74,7 @@ export default function useAgentCategories() {
         if (isAuthenticated.value && userId.value) {
             // Esperar un tick para asegurar que todo esté hidratado
             await nextTick()
-            fetchUserAgentCategories()
+            await fetchUserAgentCategories()
         }
     })
 

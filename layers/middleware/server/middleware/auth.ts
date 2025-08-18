@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { createError, getRequestHeader, defineEventHandler, getCookie } from 'h3'
 import { ofetch } from 'ofetch'
+import { logger } from '../utils/logger'
 
 // Middleware para verificar autenticación y usuario
 // Verifica el header x-user-id y lo agrega al contexto del evento
@@ -41,11 +42,14 @@ export default defineEventHandler(async (event: H3Event) => {
 
   // Si es una ruta pública, continuar sin verificar autenticación
   if (isPublicRoute) {
-    //console.log(`Acceso permitido a ruta pública: ${url}`)
     // Si es una ruta de usuario con ID, agregar el ID al contexto
     const userIdMatch = url.match(/^\/api\/users\/([a-f0-9-]+)/)
     if (userIdMatch && userIdMatch[1]) {
       event.context.userId = userIdMatch[1]
+      logger.debug('Acceso a ruta pública con ID de usuario', { 
+        url, 
+        userId: userIdMatch[1] 
+      })
     }
     return
   }
@@ -60,29 +64,39 @@ export default defineEventHandler(async (event: H3Event) => {
     return
   }
 
-  console.log(`Verificando autenticación para ruta protegida: ${url}`)
+  logger.debug('Verificando autenticación para ruta protegida', { url })
 
   // Obtener el ID de usuario del header o de la cookie
   let userId = getRequestHeader(event, 'x-user-id')
+  const authSource = userId ? 'header' : null
 
   // Si no está en el header, buscar en las cookies
   if (!userId) {
     userId = getCookie(event, 'x-user-id')
-    console.log('x-user-id from cookie:', userId)
+    if (userId) {
+      logger.debug('x-user-id obtenido de la cookie', { userId })
+    }
+  } else {
+    logger.debug('x-user-id obtenido del header', { userId })
   }
 
   // Si no hay userId, devolver error de no autorizado
   if (!userId) {
-    console.error('Acceso no autorizado a ruta protegida:', url)
+    logger.warn('Intento de acceso no autorizado', { 
+      url, 
+      method: event.node.req.method,
+      ip: event.node.req.socket.remoteAddress
+    })
+    
     throw createError({
       statusCode: 401,
-      statusMessage: 'No autorizado. Por favor inicia sesión.'
+      statusMessage: 'No autorizado: Se requiere autenticación',
     })
   }
 
   // Si llegamos aquí, el usuario está autenticado
-  console.log('Usuario autenticado con ID:', userId)
   event.context.userId = userId
+  logger.info('Usuario autenticado', { userId })
 
   // Verificar si el usuario existe
   try {
@@ -100,22 +114,29 @@ export default defineEventHandler(async (event: H3Event) => {
     })
 
     if (!user) {
-      console.error(`Error: User with id ${userId} not found`)
+      const error = new Error('Usuario no encontrado')
+      logger.error('Error al verificar el usuario', error, { userId })
+      
       throw createError({
         statusCode: 404,
-        statusMessage: 'User not found'
+        statusMessage: 'Usuario no encontrado'
       })
     }
 
     // Agregar la información del usuario al contexto
     event.context.user = user.data
-    console.log('User authenticated:', { id: user.data.id, email: user.data.email })
+    logger.debug('Usuario verificado', { 
+      userId: user.data.id, 
+      email: user.data.email,
+      ip: event.node.req.socket.remoteAddress
+    })
 
   } catch (error) {
-    console.error('Error verifying user:', error)
+    logger.error('Error al verificar el usuario', error as Error, { userId })
+    
     throw createError({
       statusCode: 500,
-      statusMessage: 'Internal server error while verifying user'
+      statusMessage: 'Error interno del servidor al verificar el usuario',
     })
   }
 })

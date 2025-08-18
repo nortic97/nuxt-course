@@ -1,5 +1,6 @@
 import { migrateAllCollections } from '../../utils/migration.helpers'
 import type { ApiResponse } from '../../types/types'
+import { logger } from '../../utils/logger'
 
 export default defineEventHandler(async (): Promise<ApiResponse<null>> => {
     try {
@@ -22,7 +23,10 @@ export default defineEventHandler(async (): Promise<ApiResponse<null>> => {
             data: null
         }
     } catch (error) {
-        console.error('Error en migración:', error)
+        logger.error('Error en migración', error as Error, {
+            endpoint: '/api/admin/migrate',
+            method: 'POST'
+        })
         return {
             success: false,
             message: 'Error en la migración',

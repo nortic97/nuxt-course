@@ -20,6 +20,7 @@ const COLLECTION_NAME = 'chats'
 
 // Crear nuevo chat
 export async function createChat(data: {
+    id?: string
     title?: string
     userId: string
     agentId: string
@@ -54,7 +55,7 @@ export async function createChat(data: {
         lastMessageAt: Timestamp.now()
     }
 
-    return await createDocument<Chat>(COLLECTION_NAME, chatData)
+    return await createDocument<Chat>(COLLECTION_NAME, chatData, data.id)
 }
 
 // Obtener chat por ID

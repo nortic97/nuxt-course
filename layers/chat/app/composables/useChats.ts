@@ -30,16 +30,15 @@ export default function useChats() {
         throw new Error(response.error || 'Error al cargar los chats')
       }
 
-      const now = new Date()
       return response.data.chats.map(chat => ({
         id: chat.id,
         title: chat.title || `Chat con ${response.data?.agent?.name || 'Asistente'}`,
         agentId: agentId,
         userId: userId.value!,
         messageCount: chat.messageCount || 0,
-        lastMessageAt: now,
-        createdAt: now,
-        updatedAt: now,
+        lastMessageAt: chat.updatedAt || chat.createdAt || new Date(),
+        createdAt: chat.createdAt || new Date(),
+        updatedAt: chat.updatedAt || chat.createdAt || new Date(),
         isActive: true,
         projectId: undefined
       } as Chat))

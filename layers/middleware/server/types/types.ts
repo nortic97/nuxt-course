@@ -259,7 +259,7 @@ export interface UserAgentMessagesResponse {
         model: string
         isFree: boolean
     }
-    chats: Array<{ id: string; title?: string; messageCount: number }>
+    chats: Array<{ id: string; title?: string; messageCount: number; updatedAt: Date; createdAt: Date }>
     pagination: {
         page: number
         limit: number

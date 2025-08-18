@@ -50,7 +50,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Message>> =
             content: body.content.trim(),
             role: body.role as MessageRole,
             userId: userId,
-            metadata: body.metadata || undefined
+            metadata: body.metadata || {}
         }
 
         // Validar que el contenido no esté vacío

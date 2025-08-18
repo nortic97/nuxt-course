@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { createOrUpdateUserViaAPI } from '../../repository/userRepository'
 import type { GoogleUser } from '../../../shared/types/types'
+import { logger } from '../../../../middleware/server/utils/logger'
 
 // Función para generar un ID de chat temporal
 function generateTempChatId(): string {
@@ -65,7 +66,10 @@ export default defineOAuthGoogleEventHandler({
       const redirectUrl = await getRedirectUrl(dbUser.id)
       return sendRedirect(event, redirectUrl || '/')
     } catch (error) {
-      console.error('Error creating/updating user:', error)
+      logger.error('Error al crear/actualizar usuario', error as Error, {
+        email: user.email,
+        provider: 'google'
+      })
       throw createError({
         statusCode: 500,
         statusMessage: 'Error al procesar el usuario',
@@ -73,7 +77,10 @@ export default defineOAuthGoogleEventHandler({
     }
   },
   onError(event, error) {
-    console.error('Google OAuth error:', error)
+    logger.error('Error en autenticación de Google', error as Error, {
+      path: event.path,
+      method: event.method
+    })
     return sendRedirect(event, '/')
   },
 })
