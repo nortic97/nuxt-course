@@ -1,7 +1,9 @@
-import type { Chat, ChatWithMessages, ApiResponse, UserAgentMessagesResponse } from '../../../middleware/server/types/types'
+import type { Chat, ChatWithMessages, ApiResponse, UserAgentMessagesResponse } from '#layers/middleware/server/types/types'
 import { v4 as uuidv4 } from 'uuid'
+import useApi from './useApi'
 
 export default function useChats() {
+  const { fetch } = useApi()
   const { session } = useAuth()
   const userId = computed(() => session.value?.databaseUserId)
   const { categoriesWithAgents } = useAgentCategories()
@@ -16,7 +18,7 @@ export default function useChats() {
     if (!userId.value) return []
 
     try {
-      const response = await $fetch<ApiResponse<UserAgentMessagesResponse>>(
+      const response = await fetch<ApiResponse<UserAgentMessagesResponse>>(
         `/api/users/${userId.value}/agent/${agentId}/messages`,
         {
           headers: {
@@ -109,7 +111,7 @@ export default function useChats() {
       recentChats.map(async (chat) => {
         try {
 
-          const response = await $fetch<ApiResponse<ChatWithMessages>>(
+          const response = await fetch<ApiResponse<ChatWithMessages>>(
             `/api/chats/${chat.id}`,
             {
               headers: {
@@ -173,14 +175,9 @@ export default function useChats() {
         agentId
       }
 
-      const response = await $fetch<ApiResponse<Chat>>('/api/chats', {
+      const response = await fetch<ApiResponse<Chat>>('/api/chats', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...useRequestHeaders(['cookie']),
-          'x-user-id': userId.toString()
-        },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
       if (response.success && response.data) {
@@ -208,14 +205,9 @@ export default function useChats() {
         Object.entries(updates).filter(([_, value]) => value !== undefined)
       )
 
-      const response = await $fetch<ApiResponse<Chat>>(`/api/chats/${chatId}`, {
+      const response = await fetch<ApiResponse<Chat>>(`/api/chats/${chatId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...useRequestHeaders(['cookie']),
-          'x-user-id': userId.toString()
-        },
-        body: JSON.stringify(filteredUpdates)
+        body: filteredUpdates
       })
 
       if (response.success && response.data) {
@@ -236,12 +228,8 @@ export default function useChats() {
   // Eliminar un chat
   async function deleteChat(chatId: string) {
     try {
-      const response = await $fetch<ApiResponse<null>>(`/api/chats/${chatId}`, {
-        method: 'DELETE',
-        headers: {
-          ...useRequestHeaders(['cookie']),
-          'x-user-id': userId.value?.toString() || ''
-        }
+      const response = await fetch<ApiResponse<null>>(`/api/chats/${chatId}`, {
+        method: 'DELETE'
       })
 
       if (response.success) {

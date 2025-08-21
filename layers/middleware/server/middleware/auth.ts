@@ -67,12 +67,14 @@ export default defineEventHandler(async (event: H3Event) => {
   logger.debug('Verificando autenticación para ruta protegida', { url })
 
   // Obtener el ID de usuario del header o de la cookie
-  let userId = getRequestHeader(event, 'x-user-id')
+  let userId = normalizeUserId(getRequestHeader(event, 'x-user-id'))
   const authSource = userId ? 'header' : null
 
   // Si no está en el header, buscar en las cookies
   if (!userId) {
-    userId = getCookie(event, 'x-user-id')
+
+    userId = normalizeUserId(getCookie(event, 'x-user-id'))
+
     if (userId) {
       logger.debug('x-user-id obtenido de la cookie', { userId })
     }
@@ -140,3 +142,27 @@ export default defineEventHandler(async (event: H3Event) => {
     })
   }
 })
+
+/**
+ * Normaliza el userId para asegurar que sea un string válido
+ * @param userId - El userId que puede ser string, objeto, o undefined
+ * @returns string normalizado o null si no es válido
+ */
+function normalizeUserId(userId: any): string | null {
+  if (!userId) return null
+
+  // Si ya es string, devolverlo
+  if (typeof userId === 'string') {
+    return userId.trim()
+  }
+
+  // Si es un objeto, convertir a JSON string
+  if (typeof userId === 'object') {
+    console.warn('userId es un objeto, convirtiendo a string:', userId)
+    return JSON.stringify(userId)
+  }
+
+  // Para otros tipos (number, etc.), convertir a string
+  return String(userId)
+}
+
