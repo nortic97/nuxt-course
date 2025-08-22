@@ -209,6 +209,10 @@ export interface ApiResponse<T = unknown> {
     error?: string
 }
 
+export interface MessageApiResponse extends ApiResponse<Message> {
+    aiResponse?: Message
+}
+
 export interface PaginatedResponse<T> {
     data: T[]
     total: number

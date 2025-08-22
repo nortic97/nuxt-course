@@ -13,6 +13,11 @@ export default defineNuxtConfig({
 
   modules: ['@nuxt/eslint', '@nuxt/image', '@nuxt/ui'],
 
+  runtimeConfig: {
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    groqApiKey: process.env.GROQ_API_KEY,
+  },
+
   vite: {
     optimizeDeps: {
       include: ['debug'],

@@ -1,8 +1,11 @@
 import { createMessage } from '../../repository/messageRepository'
-import type { ApiResponse, Message } from '../../types/types'
+import type {ApiResponse, Message, MessageApiResponse} from '../../types/types'
 import { MessageRole } from '../../types/types'
+import { AgentService } from '#layers/chat/server/services/agent-service'
+import { MessageService } from '#layers/chat/server/services/message-service'
+import { generateChatResponse } from '#layers/chat/server/services/ai-service'
 
-export default defineEventHandler(async (event): Promise<ApiResponse<Message>> => {
+export default defineEventHandler(async (event): Promise<MessageApiResponse> => {
     try {
         const body = await readBody(event)
         const userId = getHeader(event, 'x-user-id') as string
@@ -62,8 +65,59 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Message>> =
             }
         }
 
-        // Crear el mensaje
+        // Crear el mensaje del usuario
         const newMessage = await createMessage(messageData)
+
+        // Si es un mensaje de usuario, generar respuesta automática de OpenAI
+        if (messageData.role === MessageRole.USER) {
+            try {
+                // Obtener datos del Agent
+                const agent = await AgentService.getAgentByChat(messageData.chatId, userId)
+                const systemPrompt = AgentService.getSystemPrompt(agent)
+                const model = AgentService.getModel(agent)
+                const provider = AgentService.getProvider(agent)
+
+                // Obtener historial de mensajes del chat
+                const chatMessages = await MessageService.getChatMessages(messageData.chatId, userId)
+                
+                // Incluir el mensaje recién creado en el historial
+                const allMessages = [...chatMessages, newMessage]
+                
+                // Formatear mensajes para AI
+                const formattedMessages = MessageService.formatMessagesForOpenAI(allMessages, systemPrompt)
+
+                // Crear modelo AI dinámicamente según el Agent
+                const openaiApiKey = useRuntimeConfig().openaiApiKey
+                const aiModel = AgentService.createAIModelForAgent(agent, openaiApiKey)
+                const aiResponse = await generateChatResponse(aiModel, formattedMessages)
+
+                // Guardar respuesta del AI como nuevo mensaje
+                const aiMessageData = {
+                    chatId: messageData.chatId,
+                    content: aiResponse,
+                    role: MessageRole.ASSISTANT,
+                    userId: userId,
+                    metadata: { 
+                        model: model,
+                        provider: provider,
+                        generatedBy: provider
+                    }
+                }
+
+                const aiMessage = await createMessage(aiMessageData)
+
+                // Retornar ambos mensajes (usuario + AI)
+                return {
+                    success: true,
+                    message: 'Mensaje creado y respuesta generada exitosamente',
+                    data: newMessage,
+                    aiResponse: aiMessage
+                }
+            } catch (aiError) {
+                console.error('Error generando respuesta de OpenAI:', aiError)
+                // Continuar y retornar solo el mensaje del usuario si falla OpenAI
+            }
+        }
 
         return {
             success: true,
