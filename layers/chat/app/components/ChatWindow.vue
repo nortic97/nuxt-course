@@ -7,6 +7,7 @@ const props = defineProps<{
   typing: boolean;
   isLoading?: boolean;
   error?: string | null;
+  isStreaming?: boolean;
 }>();
 
 const emit = defineEmits(["send-message", "retry"]);
@@ -170,6 +171,16 @@ watch(() => props.messages, pinToBottom, { deep: true });
         </div>
       </template>
     </UContainer>
+  </div>
+
+  <!-- Agregar después del componente de mensajes -->
+  <div v-if="isStreaming" class="flex items-center space-x-2 px-4 py-2 text-gray-500">
+    <div class="animate-pulse flex space-x-1">
+      <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+      <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+      <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+    </div>
+    <span class="text-sm">IA escribiendo...</span>
   </div>
 </template>
 

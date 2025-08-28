@@ -33,6 +33,8 @@ const route = useRoute();
 const chatId = route.params.id as string;
 const isNewChat = chatId === "new";
 const agentId = route.query.agentId as string;
+const isStreaming = ref(false)
+const streamingMessageId = ref<string | null>(null)
 
 // Usar cookies para rastrear el agente seleccionado
 const selectedAgentCookie = useCookie('x-agent-id', {
@@ -106,25 +108,108 @@ async function createNewChat(): Promise<ChatWithMessages | null> {
 
 // Función para enviar un mensaje
 async function sendMessage(
-  content: string,
-  chatId: string
+    content: string,
+    chatId: string
 ): Promise<Message | null> {
   try {
-    const response = await apiFetch<{ data: Message }>(
-      `/api/messages`,
-      {
-        method: "POST",
-        body: { 
-          content,
-          chatId,
-          role: "user"
-        },
+    isStreaming.value = true
+
+    // Crear mensaje temporal del AI que se irá actualizando
+    const tempAiMessageId = `ai-temp-${Date.now()}`
+    const aiMessage: Message = {
+      id: tempAiMessageId,
+      chatId: chatId,
+      content: '', // Empezará vacío y se irá llenando
+      role: "assistant",
+      userId: chat.value?.userId || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: { streaming: true },
+    }
+
+    // Agregar mensaje temporal del AI
+    messages.value = [...messages.value, aiMessage]
+    streamingMessageId.value = tempAiMessageId
+
+    // Hacer llamada de streaming
+    const response = await fetch(`/api/chats/${chatId}/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': chat.value?.userId || '',
+        'x-agent-id': agentId || ''
+      },
+      body: JSON.stringify({ content })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`)
+    }
+
+    if (!response.body) {
+      throw new Error('No se recibió stream del servidor')
+    }
+
+    // Procesar el stream
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        // Decodificar chunk
+        const chunk = decoder.decode(value, { stream: true })
+        fullContent += chunk
+
+        // Actualizar mensaje en tiempo real
+        const messageIndex = messages.value.findIndex(m => m.id === tempAiMessageId)
+        if (messageIndex !== -1) {
+          messages.value[messageIndex] = {
+            ...messages.value[messageIndex],
+            content: fullContent,
+            updatedAt: new Date()
+          }
+        }
       }
-    );
-    return response.data || null;
+    } finally {
+      reader.releaseLock()
+      isStreaming.value = false
+      streamingMessageId.value = null
+
+      // Marcar mensaje como completado
+      const messageIndex = messages.value.findIndex(m => m.id === tempAiMessageId)
+      if (messageIndex !== -1) {
+        messages.value[messageIndex] = {
+          ...messages.value[messageIndex],
+          metadata: { streaming: false, completed: true }
+        }
+      }
+    }
+
+    // Retornar el mensaje del usuario (para compatibilidad)
+    return {
+      id: `user-${Date.now()}`,
+      chatId: chatId,
+      content: content,
+      role: "user",
+      userId: chat.value?.userId || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: {},
+    }
+
   } catch (err) {
-    console.error("Error al enviar el mensaje:", err);
-    throw err;
+    console.error("Error en streaming:", err)
+    isStreaming.value = false
+    streamingMessageId.value = null
+
+    // Remover mensaje temporal en caso de error
+    messages.value = messages.value.filter(m => m.id !== `ai-temp-${Date.now()}`)
+    throw err
   }
 }
 
@@ -209,7 +294,7 @@ const handleSendMessage = async (content: string) => {
     // Si no hay chat pero tenemos un chatId válido, crear el chat primero
     if (!chat.value && chatId && chatId !== 'new' && agentId) {
       logger.info("Creando chat automáticamente", { chatId, agentId });
-      
+
       // Crear el chat con el chatId como ID
       const response = await apiFetch<{ success: boolean; data?: Chat; message?: string; error?: string }>("/api/chats", {
         method: "POST",
@@ -227,7 +312,7 @@ const handleSendMessage = async (content: string) => {
           messages: []
         } as ChatWithMessages;
         messages.value = [];
-        
+
         // Refrescar el historial de chats después de crear uno nuevo
         try {
           await fetchChats();
@@ -263,32 +348,20 @@ const handleSendMessage = async (content: string) => {
     messages.value = [...messages.value, userMessage];
 
     // Enviar el mensaje al servidor
-    const serverMessage = await sendMessage(content, chat.value.id);
+    await sendMessage(content, chat.value.id);
 
-    if (serverMessage) {
-      // Reemplazar el mensaje temporal con la respuesta del servidor
-      const messageIndex = messages.value.findIndex(
-        (m: Message) => m.id === tempId
-      );
-      if (messageIndex !== -1) {
-        messages.value[messageIndex] = serverMessage;
-      } else {
-        messages.value.push(serverMessage);
-      }
-
-      // Si es el primer mensaje del chat y no tiene título, actualizarlo
-      if (chat.value && (!chat.value.title || chat.value.title === 'Nuevo chat') && messages.value.length === 1) {
-        try {
-          const titleContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
-          await apiFetch(`/api/chats/${chat.value.id}`, {
-            method: 'PATCH',
-            body: { title: titleContent }
-          });
-          // Actualizar el título localmente
-          chat.value.title = titleContent;
-        } catch (err) {
-          logger.warn('No se pudo actualizar el título del chat', { error: err });
-        }
+    // Si es el primer mensaje del chat y no tiene título, actualizarlo
+    if (chat.value && (!chat.value.title || chat.value.title === 'Nuevo chat') && messages.value.length === 1) {
+      try {
+        const titleContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
+        await apiFetch(`/api/chats/${chat.value.id}`, {
+          method: 'PATCH',
+          body: { title: titleContent }
+        });
+        // Actualizar el título localmente
+        chat.value.title = titleContent;
+      } catch (err) {
+        logger.warn('No se pudo actualizar el título del chat', { error: err });
       }
     }
   } catch (err) {
@@ -345,6 +418,7 @@ useHead({
         v-if="chat"
         :typing="typing"
         :chat="chat"
+        :is-streaming="isStreaming"
         :messages="messages"
         :is-loading="isLoading || isChatLoading"
         :error="error || chatError"
