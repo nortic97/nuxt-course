@@ -15,7 +15,7 @@ class Logger {
   private currentLogLevel: number
 
   private constructor() {
-    // En producción, solo mostrar warn y error por defecto
+    // In production, only show warn and error by default
     this.isProduction = process.env.NODE_ENV === 'production'
     this.currentLogLevel = this.isProduction 
       ? this.logLevels.warn 
@@ -83,7 +83,7 @@ class Logger {
     const method = event.node.req.method
     const headers = event.node.req.headers
 
-    // No registrar peticiones de assets y herramientas de desarrollo
+    // Do not log requests for assets and development tools
     if (url && !url.includes('_nuxt') && !url.includes('__nuxt_devtools__')) {
       this.info('Request', {
         url,
@@ -100,7 +100,7 @@ class Logger {
 
 export const logger = Logger.getInstance()
 
-// Helper para usar en los componentes
+// Helper to use in components
 // @ts-ignore - Nuxt auto-imports
 // eslint-disable-next-line
 const useLogger = () => logger

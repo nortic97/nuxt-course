@@ -8,33 +8,33 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
     if (!categoryId) {
       return {
         success: false,
-        message: 'ID de la categoría requerido',
-        error: 'No se proporcionó el ID de la categoría'
+        message: 'Category ID required',
+        error: 'Category ID was not provided'
       }
     }
 
-    // Obtener la categoría
+    // Get the category
     const category = await getAgentCategoryById(categoryId)
 
     if (!category) {
       return {
         success: false,
-        message: 'Categoría no encontrada',
-        error: 'No existe una categoría con el ID proporcionado'
+        message: 'Category not found',
+        error: 'A category with the provided ID does not exist'
       }
     }
 
     return {
       success: true,
-      message: 'Categoría obtenida exitosamente',
+      message: 'Category retrieved successfully',
       data: category
     }
   } catch (error) {
-    console.error('Error al obtener categoría:', error)
+    console.error('Error getting category:', error)
     return {
       success: false,
-      message: 'Error al obtener la categoría',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      message: 'Error getting category',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 })

@@ -1,6 +1,6 @@
 import type { Timestamp } from 'firebase-admin/firestore'
 
-// Tipos base para Firestore
+// Base types for Firestore
 export interface DocumentBase {
     id: string
     createdAt: Date | Timestamp
@@ -8,59 +8,59 @@ export interface DocumentBase {
     isActive: boolean
 }
 
-// Modelo User (compatible con auth layer)
+// User model (compatible with auth layer)
 export interface User extends DocumentBase {
     email: string
     name?: string | null
     avatar?: string
-    provider?: 'google' | 'github' // Agregado para compatibilidad con auth
-    // Campos adicionales para el sistema de agentes
+    provider?: 'google' | 'github' // Added for auth compatibility
+    // Additional fields for the agent system
     subscription?: {
         plan: 'free' | 'premium' | 'enterprise'
         expiresAt?: Timestamp
     }
 }
 
-// Modelo AgentCategory
+// AgentCategory model
 export interface AgentCategory extends DocumentBase {
     name: string
     description: string
-    icon?: string // Ícono para la UI
-    order?: number // Orden de visualización
+    icon?: string // Icon for the UI
+    order?: number // Display order
 }
 
-// Modelo Agent
+// Agent model
 export interface Agent extends DocumentBase {
     name: string
     description: string
     price: number
     categoryId: string
     isActive: boolean
-    model: string // ej: "gpt-4", "claude-3"
-    capabilities: string[] // ej: ["text", "image", "code"]
-    systemPrompt: string // Prompt base del agente
+    model: string // e.g., "gpt-4", "claude-3"
+    capabilities: string[] // e.g., ["text", "image", "code"]
+    systemPrompt: string // Agent's base prompt
     temperature?: number
     maxTokens?: number
-    isFree: boolean // Si está disponible en el plan gratuito
-    icon?: string // Ícono para la UI
-    tags?: string[] // Etiquetas para filtrado
+    isFree: boolean // If available in the free plan
+    icon?: string // Icon for the UI
+    tags?: string[] // Tags for filtering
 }
 
-// Modelo UserAgent (relación muchos a muchos)
+// UserAgent model (many-to-many relationship)
 export interface UserAgent extends DocumentBase {
     userId: string
     agentId: string
     purchasedAt: Timestamp
-    expiresAt?: Timestamp // Opcional: si el acceso expira
+    expiresAt?: Timestamp // Optional: if access expires
     isActive: boolean
-    paymentId?: string // ID de la transacción de pago
+    paymentId?: string // Payment transaction ID
     usage: {
         messageCount: number
         lastUsedAt: Timestamp
     }
 }
 
-// Modelo Chat
+// Chat model
 export interface Chat extends DocumentBase {
     title?: string
     userId: string
@@ -70,7 +70,7 @@ export interface Chat extends DocumentBase {
     isActive: boolean
 }
 
-// Modelo Message
+// Message model
 export interface Message extends DocumentBase {
     content: string
     role: 'user' | 'assistant' | 'system'
@@ -91,7 +91,7 @@ export enum MessageRole {
     SYSTEM = 'system'
 }
 
-// Tipos con datos poblados (para respuestas de API)
+// Types with populated data (for API responses)
 export interface AgentWithCategory extends Agent {
     category: AgentCategory
 }
@@ -110,7 +110,7 @@ export interface UserWithAgents extends User {
     availableAgents: AgentWithCategory[]
 }
 
-// Tipos para UserAgent
+// Types for UserAgent
 export interface CreateUserAgentInput {
     userId: string
     agentId: string
@@ -134,7 +134,7 @@ export interface UpdateUserAgentInput {
     }
 }
 
-// DTOs para requests
+// DTOs for requests
 export interface CreateAgentCategoryRequest {
     name: string
     description?: string
@@ -172,8 +172,8 @@ export interface UpdateAgentRequest {
 export interface CreateChatRequest {
     title?: string
     agentId: string
-    initialMessage?: string // Mensaje inicial opcional
-    tags?: string[] // Etiquetas opcionales para el chat
+    initialMessage?: string // Optional initial message
+    tags?: string[] // Optional tags for the chat
 }
 
 export interface UpdateChatRequest {
@@ -201,7 +201,7 @@ export interface UpdateProjectRequest {
     [key: string]: unknown
 }
 
-// Respuestas de la API
+// API Responses
 export interface ApiResponse<T = unknown> {
     success: boolean
     message: string
@@ -222,7 +222,7 @@ export interface PaginatedResponse<T> {
     hasPrev: boolean
 }
 
-// Parámetros de consulta
+// Query parameters
 export interface PaginationParams {
     page?: number
     limit?: number
@@ -242,8 +242,8 @@ export interface ChatQueryParams extends PaginationParams {
     userId?: string
     agentId?: string
     isActive?: boolean
-    tag?: string // Filtrar por etiqueta
-    isPinned?: boolean // Solo chats fijados
+    tag?: string // Filter by tag
+    isPinned?: boolean // Only pinned chats
 }
 
 export interface MessageQueryParams extends PaginationParams {
@@ -252,7 +252,7 @@ export interface MessageQueryParams extends PaginationParams {
     role?: MessageRole
 }
 
-// Respuesta para mensajes de usuario y agente
+// Response for user and agent messages
 export interface UserAgentMessagesResponse {
     messages: Message[]
     agent: {
@@ -272,7 +272,7 @@ export interface UserAgentMessagesResponse {
     }
 }
 
-// Utilidades para Firestore
+// Utilities for Firestore
 export interface BaseQueryOptions {
     limit?: number
     offset?: number

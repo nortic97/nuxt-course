@@ -1,7 +1,7 @@
-// Composable para utilidades de manejo de fechas
+// Composable for date handling utilities
 export default function useDateUtils() {
   /**
-   * Normaliza una fecha a la medianoche (00:00:00) en la zona horaria local
+   * Normalizes a date to midnight (00:00:00) in the local time zone
    */
   const normalizeDate = (date: Date): Date => {
     const d = new Date(date);
@@ -9,7 +9,7 @@ export default function useDateUtils() {
   };
 
   /**
-   * Verifica si una fecha es hoy
+   * Checks if a date is today
    */
   const isToday = (date: Date): boolean => {
     if (!date) return false;
@@ -22,7 +22,7 @@ export default function useDateUtils() {
   };
 
   /**
-   * Verifica si una fecha es ayer
+   * Checks if a date is yesterday
    */
   const isYesterday = (date: Date): boolean => {
     if (!date) return false;
@@ -37,29 +37,29 @@ export default function useDateUtils() {
   };
 
   /**
-   * Obtiene la fecha de un chat para agrupación, usando updatedAt (actividad reciente)
+   * Gets the date of a chat for grouping, using updatedAt (recent activity)
    */
   const getChatDate = (chat: any): Date | null => {
-    // Priorizar updatedAt para determinar actividad reciente
+    // Prioritize updatedAt to determine recent activity
     const dateField = chat?.updatedAt || chat?.createdAt;
     if (!dateField) return null;
     
-    // Si es un objeto de Firestore con _seconds
+    // If it is a Firestore object with _seconds
     if (dateField._seconds !== undefined) {
       return new Date(dateField._seconds * 1000 + (dateField._nanoseconds || 0) / 1000000);
     }
     
-    // Si es un string de fecha o timestamp
+    // If it is a date string or timestamp
     try {
       return new Date(dateField);
     } catch (e) {
-      console.error('Error al parsear la fecha del chat:', e);
+      console.error('Error parsing chat date:', e);
       return null;
     }
   };
 
   /**
-   * Agrupa chats por fecha (hoy, ayer, anteriores)
+   * Groups chats by date (today, yesterday, older)
    */
   const groupChatsByDate = (chats: any[]) => {
     const today: any[] = [];

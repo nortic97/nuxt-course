@@ -10,56 +10,56 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ title: st
         const userId = getHeader(event, 'x-user-id') as string
         const agentId = getHeader(event, 'x-agent-id') as string
 
-        // Validar parámetros
+        // Validate parameters
         if (!chatId) {
             return {
                 success: false,
-                message: 'ID de chat requerido',
-                error: 'Parámetro chatId es obligatorio'
+                message: 'Chat ID required',
+                error: 'chatId parameter is mandatory'
             }
         }
 
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
-        // Obtener mensajes del chat
+        // Get chat messages
         const messages = await MessageService.getChatMessages(chatId, userId)
         
         if (messages.length === 0) {
             return {
                 success: false,
-                message: 'No hay mensajes en el chat',
-                error: 'No se puede generar título para un chat vacío'
+                message: 'No messages in chat',
+                error: 'Cannot generate title for an empty chat'
             }
         }
 
-        // Buscar el primer mensaje del usuario
+        // Find the first user message
         const firstUserMessage = messages.find(msg => msg.role === 'user')
         
         if (!firstUserMessage) {
             return {
                 success: false,
-                message: 'No hay mensajes de usuario',
-                error: 'No se encontró mensaje de usuario para generar título'
+                message: 'No user messages found',
+                error: 'No user message found to generate a title'
             }
         }
 
-        // Obtener configuración del Agent
+        // Get Agent configuration
         const agent = await AgentService.getAgentByChat(chatId, userId)
         const model = AgentService.getModel(agent)
 
-        // El modelo AI se crea dinámicamente según el Agent configurado
+        // The AI model is created dynamically according to the configured Agent
 
-        // Crear modelo AI dinámicamente según el Agent
+        // Create AI model dynamically according to the Agent
         const aiModel = AgentService.createAIModelForAgent(agent, useRuntimeConfig()) as any
         const generatedTitle = await generateChatTitle(aiModel, firstUserMessage.content)
 
-        // Actualizar el título del chat usando el composable elegante
+        // Update the chat title using the elegant composable
         const { fetch } = useServerApi(event)
         const updateResponse = await fetch<ApiResponse<any>>(`/api/chats/${chatId}`, {
             method: 'PATCH',
@@ -71,24 +71,24 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ title: st
         if (!updateResponse.success) {
             return {
                 success: false,
-                message: 'Error actualizando título',
-                error: 'No se pudo actualizar el título del chat'
+                message: 'Error updating title',
+                error: 'Could not update chat title'
             }
         }
 
         return {
             success: true,
-            message: 'Título generado exitosamente',
+            message: 'Title generated successfully',
             data: { title: generatedTitle }
         }
 
     } catch (error) {
-        console.error('Error generando título:', error)
+        console.error('Error generating title:', error)
         
         return {
             success: false,
-            message: 'Error al generar título',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error generating title',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

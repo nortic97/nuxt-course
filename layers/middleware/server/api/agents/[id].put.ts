@@ -9,41 +9,41 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
     if (!agentId) {
       return {
         success: false,
-        message: 'ID del agente requerido',
-        error: 'No se proporcionó el ID del agente'
+        message: 'Agent ID required',
+        error: 'Agent ID was not provided'
       }
     }
 
-    // Validar que se envió el body
+    // Validate that the body was sent
     if (!body) {
       return {
         success: false,
-        message: 'Datos requeridos',
-        error: 'No se enviaron datos en el cuerpo de la petición'
+        message: 'Required data missing',
+        error: 'No data sent in the request body'
       }
     }
 
-    // Validar precio si se está actualizando
+    // Validate price if it is being updated
     if (body.price !== undefined) {
       if (typeof body.price !== 'number' || body.price < 0) {
         return {
           success: false,
-          message: 'Precio inválido',
-          error: 'El precio debe ser un número mayor o igual a 0'
+          message: 'Invalid price',
+          error: 'Price must be a number greater than or equal to 0'
         }
       }
     }
 
-    // Validar nombre si se está actualizando
+    // Validate name if it is being updated
     if (body.name !== undefined && (!body.name || !body.name.trim())) {
       return {
         success: false,
-        message: 'Nombre inválido',
-        error: 'El nombre no puede estar vacío'
+        message: 'Invalid name',
+        error: 'Name cannot be empty'
       }
     }
 
-    // Limpiar y validar datos
+    // Sanitize and validate data
     const updateData: UpdateAgentRequest = {}
 
     if (body.name !== undefined) {
@@ -70,55 +70,55 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
         : undefined
     }
 
-    // Actualizar el agente
+    // Update the agent
     const updatedAgent = await updateAgent(agentId, updateData)
 
     if (!updatedAgent) {
       return {
         success: false,
-        message: 'Error al actualizar',
-        error: 'No se pudo actualizar el agente'
+        message: 'Error during update',
+        error: 'Could not update the agent'
       }
     }
 
     return {
       success: true,
-      message: 'Agente actualizado exitosamente',
+      message: 'Agent updated successfully',
       data: updatedAgent
     }
   } catch (error) {
-    console.error('Error al actualizar agente:', error)
+    console.error('Error updating agent:', error)
 
-    // Manejar errores específicos
+    // Handle specific errors
     if (error instanceof Error) {
-      if (error.message.includes('Agente no encontrado')) {
+      if (error.message.includes('Agent not found')) {
         return {
           success: false,
-          message: 'Agente no encontrado',
+          message: 'Agent not found',
           error: error.message
         }
       }
 
-      if (error.message.includes('Ya existe un agente')) {
+      if (error.message.includes('An agent with this name already exists')) {
         return {
           success: false,
-          message: 'Agente duplicado',
+          message: 'Duplicate agent',
           error: error.message
         }
       }
 
-      if (error.message.includes('categoría especificada no existe')) {
+      if (error.message.includes('The specified category does not exist')) {
         return {
           success: false,
-          message: 'Categoría inválida',
+          message: 'Invalid category',
           error: error.message
         }
       }
 
-      if (error.message.includes('precio no puede ser negativo')) {
+      if (error.message.includes('price cannot be negative')) {
         return {
           success: false,
-          message: 'Precio inválido',
+          message: 'Invalid price',
           error: error.message
         }
       }
@@ -126,8 +126,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
 
     return {
       success: false,
-      message: 'Error al actualizar el agente',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      message: 'Error updating agent',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 })

@@ -1,4 +1,4 @@
-// shared/logger.ts - Logger compatible con cliente y servidor
+// shared/logger.ts - Client and server compatible logger
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 type LogContext = Record<string, unknown>
@@ -15,7 +15,7 @@ class UniversalLogger {
   private currentLogLevel: number
 
   private constructor() {
-    // @ts-ignore - process.env es válido en Nuxt
+    // @ts-ignore - process.env is valid in Nuxt
     this.isProduction = process.env.NODE_ENV === 'production'
     this.currentLogLevel = this.isProduction 
       ? this.logLevels.warn 
@@ -44,7 +44,7 @@ class UniversalLogger {
       ...context
     }
 
-    // En desarrollo, mostramos logs con colores
+    // In development, we show logs with colors
     if (!this.isProduction) {
       const colors = {
         debug: '\x1b[36m', // Cyan
@@ -59,7 +59,7 @@ class UniversalLogger {
         Object.keys(context).length ? context : ''
       )
     } else {
-      // En producción, usamos el método de consola apropiado
+      // In production, we use the appropriate console method
       const consoleMethod = console[level] || console.log
       consoleMethod(`[${timestamp}] ${level.toUpperCase()}:`, message, context)
     }
@@ -95,7 +95,7 @@ class UniversalLogger {
 
 export const logger = UniversalLogger.getInstance()
 
-// Helper para usar en los componentes
+// Helper to use in components
 export const useLogger = () => {
   return logger
 }

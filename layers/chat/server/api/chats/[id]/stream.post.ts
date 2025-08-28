@@ -10,24 +10,24 @@ export default defineEventHandler(async (event) => {
         const userId = getHeader(event, 'x-user-id') as string
         const body = await readBody(event)
 
-        // Validaciones
+        // Validations
         if (!chatId || !userId || !body?.content) {
             throw createError({
                 statusCode: 400,
-                statusMessage: 'Parámetros requeridos: chatId, userId, content'
+                statusMessage: 'Required parameters: chatId, userId, content'
             })
         }
 
-        // Validar que el contenido no esté vacío después del trim
+        // Validate that the content is not empty after trimming
         const trimmedContent = body.content.trim()
         if (!trimmedContent) {
             throw createError({
                 statusCode: 400,
-                statusMessage: 'El contenido no puede estar vacío'
+                statusMessage: 'The content cannot be empty'
             })
         }
 
-        // Crear mensaje del usuario primero
+        // Create user message first
         const userMessage = await createMessage({
             chatId,
             content: trimmedContent,
@@ -36,31 +36,31 @@ export default defineEventHandler(async (event) => {
             metadata: body.metadata || {}
         })
 
-        // Obtener configuración del Agent
+        // Get Agent configuration
         const agent = await AgentService.getAgentByChat(chatId, userId)
         const systemPrompt = AgentService.getSystemPrompt(agent)
         const model = AgentService.getModel(agent)
         const provider = AgentService.getProvider(agent)
 
-        // Obtener historial de mensajes
+        // Get message history
         const chatMessages = await MessageService.getChatMessages(chatId, userId)
         const allMessages = [...chatMessages, userMessage]
         const formattedMessages = MessageService.formatMessagesForOpenAI(allMessages, systemPrompt)
 
-        // Crear modelo AI dinámicamente según el Agent
+        // Dynamically create AI model based on the Agent
         const openaiApiKey = useRuntimeConfig().openaiApiKey
         const aiModel = AgentService.createAIModelForAgent(agent, useRuntimeConfig())
         
-        // Configurar streaming response
+        // Configure streaming response
         setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
         setHeader(event, 'Cache-Control', 'no-cache')
         setHeader(event, 'Connection', 'keep-alive')
 
-        // Generar respuesta streaming
+        // Generate streaming response
         const stream = await streamChatResponse(aiModel, formattedMessages)
         let fullResponse = ''
 
-        // Crear un ReadableStream para el streaming
+        // Create a ReadableStream for streaming
         const readableStream = new ReadableStream({
             async start(controller) {
                 try {
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
                         controller.enqueue(new TextEncoder().encode(chunk))
                     }
                     
-                    // Guardar respuesta completa del AI solo si hay contenido
+                    // Save the complete AI response only if there is content
                     if (fullResponse.trim()) {
                         await createMessage({
                             chatId,
@@ -83,12 +83,12 @@ export default defineEventHandler(async (event) => {
                             }
                         })
                     } else {
-                        console.warn('No se recibió respuesta del AI, no se guardará mensaje vacío')
+                        console.warn('No AI response received, empty message will not be saved')
                     }
                     
                     controller.close()
                 } catch (error) {
-                    console.error('Error en streaming:', error)
+                    console.error('Error in streaming:', error)
                     controller.error(error)
                 }
             }
@@ -97,10 +97,10 @@ export default defineEventHandler(async (event) => {
         return sendStream(event, readableStream)
 
     } catch (error) {
-        console.error('Error en endpoint streaming:', error)
+        console.error('Error in streaming endpoint:', error)
         throw createError({
             statusCode: 500,
-            statusMessage: error instanceof Error ? error.message : 'Error interno del servidor'
+            statusMessage: error instanceof Error ? error.message : 'Internal server error'
         })
     }
 })

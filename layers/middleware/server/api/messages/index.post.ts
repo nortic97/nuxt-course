@@ -10,44 +10,44 @@ export default defineEventHandler(async (event): Promise<MessageApiResponse> => 
         const body = await readBody(event)
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Validar campos requeridos
+        // Validate required fields
         if (!body.chatId || !body.content || !body.role) {
             return {
                 success: false,
-                message: 'Datos requeridos faltantes',
-                error: 'chatId, content y role son obligatorios'
+                message: 'Missing required data',
+                error: 'chatId, content, and role are mandatory'
             }
         }
 
-        // Validar rol
+        // Validate role
         const validRoles = [MessageRole.USER, MessageRole.ASSISTANT, MessageRole.SYSTEM]
         if (!validRoles.includes(body.role)) {
             return {
                 success: false,
-                message: 'Rol inválido',
-                error: `El rol debe ser uno de: ${validRoles.join(', ')}`
+                message: 'Invalid role',
+                error: `Role must be one of: ${validRoles.join(', ')}`
             }
         }
 
-        // Preparar datos del mensaje
+        // Prepare message data
         const messageData = {
             chatId: body.chatId.trim(),
             content: body.content.trim(),
@@ -56,42 +56,42 @@ export default defineEventHandler(async (event): Promise<MessageApiResponse> => 
             metadata: body.metadata || {}
         }
 
-        // Validar que el contenido no esté vacío
+        // Validate that the content is not empty
         if (!messageData.content) {
             return {
                 success: false,
-                message: 'Contenido requerido',
-                error: 'El contenido del mensaje no puede estar vacío'
+                message: 'Content required',
+                error: 'Message content cannot be empty'
             }
         }
 
-        // Crear el mensaje del usuario
+        // Create the user message
         const newMessage = await createMessage(messageData)
 
-        // Si es un mensaje de usuario, generar respuesta automática de OpenAI
+        // If it's a user message, generate an automatic AI response
         if (messageData.role === MessageRole.USER) {
             try {
-                // Obtener datos del Agent
+                // Get Agent data
                 const agent = await AgentService.getAgentByChat(messageData.chatId, userId)
                 const systemPrompt = AgentService.getSystemPrompt(agent)
                 const model = AgentService.getModel(agent)
                 const provider = AgentService.getProvider(agent)
 
-                // Obtener historial de mensajes del chat
+                // Get chat message history
                 const chatMessages = await MessageService.getChatMessages(messageData.chatId, userId)
                 
-                // Incluir el mensaje recién creado en el historial
+                // Include the newly created message in the history
                 const allMessages = [...chatMessages, newMessage]
                 
-                // Formatear mensajes para AI
+                // Format messages for the AI
                 const formattedMessages = MessageService.formatMessagesForOpenAI(allMessages, systemPrompt)
 
-                // Crear modelo AI dinámicamente según el Agent
+                // Dynamically create AI model based on the Agent
                 const openaiApiKey = useRuntimeConfig().openaiApiKey
                 const aiModel = AgentService.createAIModelForAgent(agent, openaiApiKey)
                 const aiResponse = await generateChatResponse(aiModel, formattedMessages)
 
-                // Guardar respuesta del AI como nuevo mensaje
+                // Save AI response as a new message
                 const aiMessageData = {
                     chatId: messageData.chatId,
                     content: aiResponse,
@@ -106,41 +106,41 @@ export default defineEventHandler(async (event): Promise<MessageApiResponse> => 
 
                 const aiMessage = await createMessage(aiMessageData)
 
-                // Retornar ambos mensajes (usuario + AI)
+                // Return both messages (user + AI)
                 return {
                     success: true,
-                    message: 'Mensaje creado y respuesta generada exitosamente',
+                    message: 'Message created and response generated successfully',
                     data: newMessage,
                     aiResponse: aiMessage
                 }
             } catch (aiError) {
-                console.error('Error generando respuesta de OpenAI:', aiError)
-                // Continuar y retornar solo el mensaje del usuario si falla OpenAI
+                console.error('Error generating AI response:', aiError)
+                // Continue and return only the user's message if AI fails
             }
         }
 
         return {
             success: true,
-            message: 'Mensaje creado exitosamente',
+            message: 'Message created successfully',
             data: newMessage
         }
     } catch (error) {
-        console.error('Error al crear mensaje:', error)
+        console.error('Error creating message:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('no encontrado o no tienes permisos')) {
+            if (error.message.includes('not found or you do not have permission')) {
                 return {
                     success: false,
-                    message: 'Chat no encontrado',
+                    message: 'Chat not found',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
@@ -148,8 +148,8 @@ export default defineEventHandler(async (event): Promise<MessageApiResponse> => 
 
         return {
             success: false,
-            message: 'Error al crear el mensaje',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error creating message',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

@@ -14,20 +14,20 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
             search,
             minPrice,
             maxPrice,
-            userId // Para obtener agentes disponibles para un usuario específico
+            userId // To get available agents for a specific user
         } = query
 
-        // Si se especifica userId, obtener solo los agentes disponibles para ese usuario
+        // If userId is specified, get only the available agents for that user
         if (userId && typeof userId === 'string') {
             const availableAgents = await getAvailableAgentsForUser(userId)
             return {
                 success: true,
-                message: 'Agentes disponibles obtenidos exitosamente',
+                message: 'Available agents retrieved successfully',
                 data: availableAgents
             }
         }
 
-        // Preparar parámetros de consulta
+        // Prepare query parameters
         const queryParams = {
             page: Number(page),
             limit: Number(limit),
@@ -40,22 +40,22 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
             ...(maxPrice !== undefined && { maxPrice: Number(maxPrice) })
         }
 
-        // Obtener agentes
+        // Get agents
         const result = await getAllAgents(queryParams)
 
-        // Si es una búsqueda, retornar formato simple
+        // If it's a search, return a simple format
         if (search) {
             return {
                 success: true,
-                message: 'Agentes encontrados',
+                message: 'Agents found',
                 data: result.documents || result as unknown
             }
         }
 
-        // Retornar con paginación
+        // Return with pagination
         return {
             success: true,
-            message: 'Agentes obtenidos exitosamente',
+            message: 'Agents retrieved successfully',
             data: result.documents,
             pagination: {
                 page: Number(page),
@@ -66,11 +66,11 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
             }
         }
     } catch (error) {
-        console.error('Error al obtener agentes:', error)
+        console.error('Error getting agents:', error)
         return {
             success: false,
-            message: 'Error al obtener los agentes',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error getting agents',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

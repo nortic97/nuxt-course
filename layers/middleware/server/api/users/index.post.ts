@@ -5,25 +5,25 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
     try {
         const body = await readBody(event)
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data was sent in the request body'
             }
         }
 
-        // Validar email
+        // Validate email
         if (!body.email || typeof body.email !== 'string') {
             return {
                 success: false,
-                message: 'Email requerido',
-                error: 'El campo email es obligatorio y debe ser una cadena válida'
+                message: 'Email required',
+                error: 'The email field is mandatory and must be a valid string'
             }
         }
 
-        // Crear o actualizar usuario
+        // Create or update user
         const user = await createOrUpdateUser({
             id: body.id,
             email: body.email.trim().toLowerCase(),
@@ -34,18 +34,18 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
 
         return {
             success: true,
-            message: user.createdAt === user.updatedAt ? 'Usuario creado exitosamente' : 'Usuario actualizado exitosamente',
+            message: user.createdAt === user.updatedAt ? 'User created successfully' : 'User updated successfully',
             data: user
         }
     } catch (error) {
-        console.error('Error al crear/actualizar usuario:', error)
+        console.error('Error creating/updating user:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
@@ -53,8 +53,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
 
         return {
             success: false,
-            message: 'Error al procesar el usuario',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error processing user',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

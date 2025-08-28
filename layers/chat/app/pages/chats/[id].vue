@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// Importar tipos desde el módulo compartido
+// Import types from the shared module
 import type {
   Chat,
   Message,
   ChatWithMessages,
 } from "../../../shared/types/types";
 
-// Logger que solo muestra mensajes en desarrollo
+// Logger that only shows messages in development
 const logger = {
   error: (message: string, error: any, context: Record<string, any> = {}) => {
     if (process.dev) {
@@ -36,29 +36,29 @@ const agentId = route.query.agentId as string;
 const isStreaming = ref(false)
 const streamingMessageId = ref<string | null>(null)
 
-// Usar cookies para rastrear el agente seleccionado
+// Use cookies to track the selected agent
 const selectedAgentCookie = useCookie('x-agent-id', {
   default: () => null,
-  maxAge: 60 * 60 * 24 * 7 // 7 días
+  maxAge: 60 * 60 * 24 * 7 // 7 days
 });
 
-// Computed para verificar si hay un agente válido seleccionado
+// Computed to check if a valid agent is selected
 const hasValidAgent = computed(() => {
-  // Debe haber agentId en la URL y debe coincidir con la cookie (si existe)
+  // There must be an agentId in the URL and it must match the cookie (if it exists)
   if (!agentId) return false;
   
-  // Si no hay cookie, establecerla con el agentId de la URL
+  // If there is no cookie, set it with the agentId from the URL
   if (!selectedAgentCookie.value) {
     selectedAgentCookie.value = agentId;
     return true;
   }
   
-  // Verificar que coincidan para seguridad
+  // Verify they match for security
   return selectedAgentCookie.value === agentId;
 });
 
 
-// Inicializar el estado del chat
+// Initialize chat state
 const {
   isLoading: isChatLoading,
   error: chatError,
@@ -67,21 +67,21 @@ const {
   chats,
 } = useChats();
 
-// Usar el composable de API
+// Use the API composable
 const { fetch: apiFetch } = useApi();
 
-// Estado local
+// Local state
 const chat = ref<ChatWithMessages | null>(null);
 const messages = ref<Message[]>([]);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const typing = ref(false);
 
-// Función para crear un nuevo chat
+// Function to create a new chat
 async function createNewChat(): Promise<ChatWithMessages | null> {
   try {
     if (!agentId) {
-      throw new Error("Se requiere un agentId para crear un nuevo chat");
+      throw new Error("agentId is required to create a new chat");
     }
 
     const response = await apiFetch<{ data: Chat }>("/api/chats", {
@@ -96,17 +96,17 @@ async function createNewChat(): Promise<ChatWithMessages | null> {
       messages: []
     } as ChatWithMessages;
   } catch (err) {
-    logger.error("Error al crear el chat", err, {
+    logger.error("Error creating chat", err, {
       chatId: 'new',
       isNewChat: true,
       agentId: agentId
     });
-    error.value = "No se pudo crear un nuevo chat. Por favor, inténtalo de nuevo.";
+    error.value = "Could not create a new chat. Please try again.";
     return null;
   }
 }
 
-// Función para enviar un mensaje
+// Function to send a message
 async function sendMessage(
     content: string,
     chatId: string
@@ -114,12 +114,12 @@ async function sendMessage(
   try {
     isStreaming.value = true
 
-    // Crear mensaje temporal del AI que se irá actualizando
+    // Create a temporary AI message that will be updated
     const tempAiMessageId = `ai-temp-${Date.now()}`
     const aiMessage: Message = {
       id: tempAiMessageId,
       chatId: chatId,
-      content: '', // Empezará vacío y se irá llenando
+      content: '', // Will start empty and be filled
       role: "assistant",
       userId: chat.value?.userId || '',
       createdAt: new Date(),
@@ -127,11 +127,11 @@ async function sendMessage(
       metadata: { streaming: true },
     }
 
-    // Agregar mensaje temporal del AI
+    // Add temporary AI message
     messages.value = [...messages.value, aiMessage]
     streamingMessageId.value = tempAiMessageId
 
-    // Hacer llamada de streaming
+    // Make streaming call
     const response = await fetch(`/api/chats/${chatId}/stream`, {
       method: 'POST',
       headers: {
@@ -147,10 +147,10 @@ async function sendMessage(
     }
 
     if (!response.body) {
-      throw new Error('No se recibió stream del servidor')
+      throw new Error('No stream received from server')
     }
 
-    // Procesar el stream
+    // Process the stream
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let fullContent = ''
@@ -161,11 +161,11 @@ async function sendMessage(
 
         if (done) break
 
-        // Decodificar chunk
+        // Decode chunk
         const chunk = decoder.decode(value, { stream: true })
         fullContent += chunk
 
-        // Actualizar mensaje en tiempo real
+        // Update message in real-time
         const messageIndex = messages.value.findIndex(m => m.id === tempAiMessageId)
         if (messageIndex !== -1) {
           messages.value[messageIndex] = {
@@ -180,7 +180,7 @@ async function sendMessage(
       isStreaming.value = false
       streamingMessageId.value = null
 
-      // Marcar mensaje como completado
+      // Mark message as completed
       const messageIndex = messages.value.findIndex(m => m.id === tempAiMessageId)
       if (messageIndex !== -1) {
         messages.value[messageIndex] = {
@@ -190,7 +190,7 @@ async function sendMessage(
       }
     }
 
-    // Retornar el mensaje del usuario (para compatibilidad)
+    // Return the user message (for compatibility)
     return {
       id: `user-${Date.now()}`,
       chatId: chatId,
@@ -203,44 +203,44 @@ async function sendMessage(
     }
 
   } catch (err) {
-    console.error("Error en streaming:", err)
+    console.error("Streaming error:", err)
     isStreaming.value = false
     streamingMessageId.value = null
 
-    // Remover mensaje temporal en caso de error
+    // Remove temporary message in case of error
     messages.value = messages.value.filter(m => m.id !== `ai-temp-${Date.now()}`)
     throw err
   }
 }
 
-// Cargar el chat o crear uno nuevo
+// Load the chat or create a new one
 async function loadChat() {
   isLoading.value = true;
   error.value = null;
 
   try {
     if (isNewChat) {
-      // Para un nuevo chat, creamos uno nuevo
+      // For a new chat, we create a new one
       const newChat = await createNewChat();
       if (newChat) {
         chat.value = newChat;
         messages.value = newChat.messages || [];
       } else {
-        throw new Error("No se pudo crear un nuevo chat");
+        throw new Error("Could not create a new chat");
       }
     } else {
-      // Para un chat existente, lo cargamos
-      // Primero, intentar encontrarlo en la lista de chats ya cargada
+      // For an existing chat, we load it
+      // First, try to find it in the already loaded chats list
       let loadedChat = chats.value.find((c) => c.id === chatId) as ChatWithMessages | undefined;
 
-      // Si no está o no tiene mensajes, buscarlo en la API
+      // If it's not there or has no messages, fetch it from the API
       if (!loadedChat || !loadedChat.messages || loadedChat.messages.length === 0) {
         const response = await apiFetch<{ data: ChatWithMessages }>(
           `/api/chats/${chatId}`
         );
         if (response?.data) {
           loadedChat = response.data;
-          // Actualizar la lista global de chats para consistencia
+          // Update the global chats list for consistency
           const index = chats.value.findIndex(c => c.id === chatId);
           if (index !== -1) {
             chats.value[index] = { ...chats.value[index], ...loadedChat };
@@ -254,21 +254,21 @@ async function loadChat() {
         chat.value = loadedChat;
         messages.value = loadedChat.messages || [];
       } else {
-        throw new Error(`No se pudo encontrar el chat con ID: ${chatId}`);
+        throw new Error(`Could not find chat with ID: ${chatId}`);
       }
     }
   } catch (err) {
-    logger.error("Error al cargar el chat", err, {
+    logger.error("Error loading chat", err, {
       chatId: chatId,
       isNewChat: isNewChat
     });
-    error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo.";
+    error.value = "Could not load chat. Please try again.";
   } finally {
     isLoading.value = false;
   }
 }
 
-// Manejar el envío de mensajes
+// Handle message sending
 const handleSendMessage = async (content: string) => {
   if (!content.trim()) return;
 
@@ -276,20 +276,20 @@ const handleSendMessage = async (content: string) => {
     typing.value = true;
     error.value = null;
 
-    // Si no hay chat pero tenemos un chatId válido, crear el chat primero
+    // If there is no chat but we have a valid chatId, create the chat first
     if (!chat.value && chatId && chatId !== 'new' && agentId) {
-      logger.info("Creando chat automáticamente", { chatId, agentId });
+      logger.info("Creating chat automatically", { chatId, agentId });
 
-      // Crear el chat con el chatId como ID
+      // Create the chat with the chatId as ID
       const response = await apiFetch<{ success: boolean; data?: Chat; message?: string; error?: string }>("/api/chats", {
         method: "POST",
         body: { 
           agentId: agentId,
-          chatId: chatId // Usar el chatId de la URL como ID del chat
+          chatId: chatId // Use the chatId from the URL as the chat ID
         },
       });
 
-      logger.info("Respuesta de creación de chat", { response });
+      logger.info("Chat creation response", { response });
 
       if (response.success && response.data) {
         chat.value = {
@@ -298,25 +298,25 @@ const handleSendMessage = async (content: string) => {
         } as ChatWithMessages;
         messages.value = [];
 
-        // Refrescar el historial de chats después de crear uno nuevo
+        // Refresh the chat history after creating a new one
         try {
           await fetchChats();
-          logger.info("Historial de chats actualizado después de crear nuevo chat");
+          logger.info("Chat history updated after creating new chat");
         } catch (refreshError) {
-          logger.warn("No se pudo actualizar el historial de chats", { error: refreshError });
+          logger.warn("Could not update chat history", { error: refreshError });
         }
       } else {
-        const errorMsg = response.error || response.message || "No se pudo crear el chat";
-        logger.error("Error en respuesta de creación de chat", { response });
+        const errorMsg = response.error || response.message || "Could not create chat";
+        logger.error("Error in chat creation response", { response });
         throw new Error(errorMsg);
       }
     }
 
     if (!chat.value) {
-      throw new Error("No hay chat disponible para enviar el mensaje");
+      throw new Error("No chat available to send the message");
     }
 
-    // Crear un mensaje local inmediatamente para mejor UX
+    // Create a local message immediately for better UX
     const tempId = `temp-${Date.now()}`;
     const userMessage: Message = {
       id: tempId,
@@ -329,55 +329,55 @@ const handleSendMessage = async (content: string) => {
       metadata: {},
     };
 
-    // Agregar el mensaje localmente
+    // Add the local message
     messages.value = [...messages.value, userMessage];
 
-    // Enviar el mensaje al servidor
+    // Send the message to the server
     await sendMessage(content, chat.value.id);
 
-    // Si es el primer mensaje del chat y no tiene título, generar uno con IA
-    if (chat.value && (!chat.value.title || chat.value.title === 'Nuevo chat') && messages.value.length === 1) {
-      // La llamada se hace en segundo plano para no bloquear la UI
+    // If it's the first message of the chat and it has no title, generate one with AI
+    if (chat.value && (!chat.value.title || chat.value.title === 'New Chat') && messages.value.length === 1) {
+      // The call is made in the background to not block the UI
       apiFetch<{ success: boolean, data?: { title: string } }>(`/api/chats/${chat.value.id}/generate-title`, {
         method: 'POST'
       }).then(response => {
         if (response.success && response.data?.title && chat.value) {
-          // Actualizar el título localmente en el chat actual
+          // Update the title locally in the current chat
           chat.value.title = response.data.title;
-          // Refrescar la lista de chats para que se muestre el nuevo título
+          // Refresh the chat list to show the new title
           fetchChats();
         }
       }).catch(err => {
-        logger.warn('La generación de título con IA falló, se usará un título por defecto.', { error: err });
+        logger.warn('AI title generation failed, a default title will be used.', { error: err });
       });
     }
   } catch (err) {
-    logger.error("Error al enviar el mensaje", err, {
+    logger.error("Error sending message", err, {
       chatId: chatId,
       messageLength: content.length,
       agentId: agentId
     });
-    error.value = "No se pudo enviar el mensaje. Por favor, inténtalo de nuevo.";
+    error.value = "Could not send message. Please try again.";
   } finally {
     typing.value = false;
   }
 };
 
-// Reintentar la carga del chat
+// Retry loading the chat
 async function handleRetry() {
   error.value = null;
   await loadChat();
 }
 
-// Cargar el chat cuando se monta el componente
+// Load the chat when the component is mounted
 onMounted(() => {
   loadChat();
 });
 
-// Configuración de la página
+// Page configuration
 const appConfig = useAppConfig();
 const title = computed(() => {
-  if (isNewChat) return `Nuevo chat - ${appConfig.title}`;
+  if (isNewChat) return `New Chat - ${appConfig.title}`;
   return chat.value?.title
     ? `${chat.value.title} - ${appConfig.title}`
     : appConfig.title;
@@ -421,7 +421,7 @@ useHead({
             name="i-heroicons-arrow-path"
             class="w-12 h-12 text-gray-400 animate-spin mx-auto mb-4"
           />
-          <p class="text-gray-500">Cargando chat...</p>
+          <p class="text-gray-500">Loading chat...</p>
         </div>
       </div>
       <div v-else class="flex items-center justify-center h-full">
@@ -432,9 +432,9 @@ useHead({
               name="i-heroicons-chat-bubble-left-right"
               class="w-16 h-16 text-gray-300 mx-auto mb-4"
             />
-            <h2 class="text-xl font-semibold text-gray-700 mb-2">Nuevo Chat</h2>
+            <h2 class="text-xl font-semibold text-gray-700 mb-2">New Chat</h2>
             <p class="text-gray-500">
-              Escribe tu primer mensaje para comenzar la conversación.
+              Type your first message to start the conversation.
             </p>
           </div>
           <div class="w-full">
@@ -447,9 +447,9 @@ useHead({
             name="i-heroicons-user-circle"
             class="w-16 h-16 text-gray-300 mx-auto mb-4"
           />
-          <h2 class="text-xl font-semibold text-gray-700">Selecciona un Agente</h2>
+          <h2 class="text-xl font-semibold text-gray-700">Select an Agent</h2>
           <p class="text-gray-500 mt-2">
-            Haz clic en un agente de la sección "Mis Agentes" para comenzar a chatear.
+            Click on an agent in the "My Agents" section to start chatting.
           </p>
         </div>
         <!-- Mensaje por defecto cuando no hay chatId válido -->
@@ -458,9 +458,9 @@ useHead({
             name="i-heroicons-chat-bubble-left-right"
             class="w-16 h-16 text-gray-300 mx-auto mb-4"
           />
-          <h2 class="text-xl font-semibold text-gray-700">Bienvenido</h2>
+          <h2 class="text-xl font-semibold text-gray-700">Welcome</h2>
           <p class="text-gray-500 mt-2">
-            Selecciona un chat para comenzar a conversar.
+            Select a chat to start conversing.
           </p>
         </div>
       </div>
@@ -475,7 +475,7 @@ useHead({
             </template>
 
             <p class="mb-4">
-              {{ boundaryError.message || "Ocurrió un error inesperado" }}
+              {{ boundaryError.message || "An unexpected error occurred" }}
             </p>
 
             <div class="space-x-2">
@@ -486,7 +486,7 @@ useHead({
                 :loading="isLoading"
                 @click="handleRetry"
               >
-                Reintentar
+                Retry
               </UButton>
 
               <UButton
@@ -495,7 +495,7 @@ useHead({
                 icon="i-heroicons-arrow-left"
                 @click="handleError"
               >
-                Volver al inicio
+                Back to Home
               </UButton>
             </div>
           </UCard>

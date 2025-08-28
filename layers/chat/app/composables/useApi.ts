@@ -1,7 +1,7 @@
 // composables/useApi.ts
 import { useAuth } from '#layers/auth/app/composables/useAuth'
 
-// Usar console en el cliente solo en desarrollo
+// Use console on the client only in development
 const logger = {
   error: (message: string, ...args: any[]) => {
     if (process.dev) {
@@ -23,7 +23,7 @@ const logger = {
 export default function useApi() {
     const { session, userId } = useAuth()
     
-    // Obtener la cookie del agente seleccionado
+    // Get the selected agent cookie
     const selectedAgentCookie = useCookie('x-agent-id', {
         default: () => null
     })
@@ -38,14 +38,14 @@ export default function useApi() {
     ): Promise<T> => {
         const { method = 'GET', body, headers = {} } = options
         
-        // Verificar si hay una sesión activa
+        // Check if there is an active session
         if (!session.value?.databaseUserId || !userId.value) {
-            const error = 'No hay una sesión de usuario activa'
+            const error = 'There is no active user session'
             logger.error(error, { session: !!session.value, userId: !!userId.value })
             throw new Error(error)
         }
 
-        // Configurar headers básicos
+        // Configure basic headers
         const requestHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
             'x-user-id': userId.value.toString(),
@@ -53,7 +53,7 @@ export default function useApi() {
             ...headers
         }
 
-        // Agregar x-agent-id si está disponible
+        // Add x-agent-id if available
         if (selectedAgentCookie.value) {
             requestHeaders['x-agent-id'] = selectedAgentCookie.value
         }
@@ -63,12 +63,12 @@ export default function useApi() {
                 method,
                 headers: requestHeaders,
                 ...(body && { body }),
-                credentials: 'include' // Importante para incluir cookies
+                credentials: 'include' // Important to include cookies
             })
 
             return response
         } catch (error) {
-            logger.error('Error en la petición API', error as Error, {
+            logger.error('Error in API request', error as Error, {
                 url,
                 method,
                 hasBody: !!body

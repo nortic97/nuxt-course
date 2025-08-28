@@ -2,15 +2,15 @@ import type { Agent, Chat } from '#layers/middleware/server/types/types'
 import {createAIModel} from "#layers/chat/server/services/ai-service";
 
 /**
- * Servicio para obtener datos del Agent desde la capa middleware
+ * Service to get Agent data from the middleware layer
  */
 export class AgentService {
   /**
-   * Obtiene los datos del Agent asociado a un chat
+   * Gets the data of the Agent associated with a chat
    */
   static async getAgentByChat(chatId: string, userId: string): Promise<Agent | null> {
     try {
-      // Llamar al endpoint de middleware para obtener el chat
+      // Call the middleware endpoint to get the chat
       const chatResponse = await $fetch<{ success: boolean; data: Chat }>(`/api/chats/${chatId}`, {
         headers: {
           'x-user-id': userId,
@@ -19,19 +19,19 @@ export class AgentService {
       })
 
       if (!chatResponse.success || !chatResponse.data) {
-        console.error('Chat no encontrado:', chatId)
+        console.error('Chat not found:', chatId)
         return null
       }
 
       const chat = chatResponse.data
 
-      // Si el chat no tiene agentId, retornar null
+      // If the chat has no agentId, return null
       if (!chat.agentId) {
-        console.warn('Chat no tiene Agent asociado:', chatId)
+        console.warn('Chat has no Agent associated:', chatId)
         return null
       }
 
-      // Obtener el Agent desde middleware
+      // Get the Agent from middleware
       const agentResponse = await $fetch<{ success: boolean; data: Agent }>(`/api/agents/${chat.agentId}`, {
         headers: {
           'x-user-id': userId,
@@ -40,48 +40,48 @@ export class AgentService {
       })
 
       if (!agentResponse.success || !agentResponse.data) {
-        console.error('Agent no encontrado:', chat.agentId)
+        console.error('Agent not found:', chat.agentId)
         return null
       }
 
       return agentResponse.data
     } catch (error) {
-      console.error('Error obteniendo Agent data:', error)
+      console.error('Error getting Agent data:', error)
       return null
     }
   }
 
   /**
-   * Obtiene el system prompt del Agent o retorna uno por defecto
+   * Gets the system prompt from the Agent or returns a default one
    */
   static getSystemPrompt(agent: Agent | null): string {
     if (agent?.systemPrompt) {
       return agent.systemPrompt
     }
     
-    // System prompt por defecto
-    return 'Eres un asistente útil y amigable. Responde de manera clara y concisa.'
+    // Default system prompt
+    return 'You are a helpful and friendly assistant. Respond clearly and concisely.'
   }
 
   /**
-   * Obtiene el modelo del Agent o retorna uno por defecto
+   * Gets the model from the Agent or returns a default one
    */
   static getModel(agent: Agent | null): string {
     if (agent?.model) {
       return agent.model
     }
     
-    // Modelo por defecto - Ollama (gratuito)
+    // Default model - Ollama (free)
     return 'llama3.2'
   }
 
   /**
-   * Obtiene el proveedor de AI basado en el modelo del Agent
+   * Gets the AI provider based on the Agent's model
    */
   static getProvider(agent: Agent | null): string {
     const model = this.getModel(agent)
     
-    // Detectar proveedor basado en el modelo
+    // Detect provider based on the model
     if (model.startsWith('gpt-') || model.includes('openai')) {
       return 'openai'
     }
@@ -92,20 +92,20 @@ export class AgentService {
       return 'ollama'
     }
     
-    // Por defecto Ollama (gratuito)
+    // Default to Ollama (free)
     return 'ollama'
   }
 
   /**
-   * Crea el modelo de AI apropiado para el Agent
+   * Creates the appropriate AI model for the Agent
    */
   static createAIModelForAgent(agent: Agent | null, runtimeConfig: any) {
     const model = this.getModel(agent)
     const provider = this.getProvider(agent)
     
-    console.log(`[AgentService] Usando proveedor: ${provider}, modelo: ${model}`)
+    console.log(`[AgentService] Using provider: ${provider}, model: ${model}`)
     
-    // Seleccionar API key según el proveedor
+    // Select API key based on the provider
     let apiKey: string | undefined
     switch (provider) {
       case 'openai':
@@ -115,7 +115,7 @@ export class AgentService {
         apiKey = runtimeConfig.groqApiKey
         break
       case 'ollama':
-        // Ollama no necesita API key
+        // Ollama does not need an API key
         apiKey = undefined
         break
     }

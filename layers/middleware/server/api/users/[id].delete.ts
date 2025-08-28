@@ -8,28 +8,28 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
         if (!userId) {
             return {
                 success: false,
-                message: 'ID de usuario requerido',
-                error: 'No se proporcionó el ID del usuario'
+                message: 'User ID required',
+                error: 'User ID was not provided'
             }
         }
 
-        // Desactivar el usuario (soft delete)
+        // Deactivate the user (soft delete)
         await deactivateUser(userId)
 
         return {
             success: true,
-            message: 'Usuario desactivado exitosamente',
+            message: 'User deactivated successfully',
             data: null
         }
     } catch (error) {
-        console.error('Error al desactivar usuario:', error)
+        console.error('Error deactivating user:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('Usuario no encontrado')) {
+            if (error.message.includes('User not found')) {
                 return {
                     success: false,
-                    message: 'Usuario no encontrado',
+                    message: 'User not found',
                     error: error.message
                 }
             }
@@ -37,8 +37,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
 
         return {
             success: false,
-            message: 'Error al desactivar el usuario',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error deactivating the user',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

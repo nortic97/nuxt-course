@@ -8,36 +8,36 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
     if (!categoryId) {
       return {
         success: false,
-        message: 'ID de la categoría requerido',
-        error: 'No se proporcionó el ID de la categoría'
+        message: 'Category ID required',
+        error: 'Category ID was not provided'
       }
     }
 
-    // Eliminar la categoría (soft delete)
+    // Delete the category (soft delete)
     await deleteAgentCategory(categoryId)
 
     return {
       success: true,
-      message: 'Categoría eliminada exitosamente',
+      message: 'Category deleted successfully',
       data: null
     }
   } catch (error) {
-    console.error('Error al eliminar categoría:', error)
+    console.error('Error deleting category:', error)
 
-    // Manejar errores específicos
+    // Handle specific errors
     if (error instanceof Error) {
-      if (error.message.includes('Categoría no encontrada')) {
+      if (error.message.includes('Category not found')) {
         return {
           success: false,
-          message: 'Categoría no encontrada',
+          message: 'Category not found',
           error: error.message
         }
       }
 
-      if (error.message.includes('tiene agentes activos')) {
+      if (error.message.includes('has active agents')) {
         return {
           success: false,
-          message: 'No se puede eliminar',
+          message: 'Cannot delete',
           error: error.message
         }
       }
@@ -45,8 +45,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
 
     return {
       success: false,
-      message: 'Error al eliminar la categoría',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      message: 'Error deleting category',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 })

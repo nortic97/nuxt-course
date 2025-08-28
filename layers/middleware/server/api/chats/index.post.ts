@@ -6,77 +6,77 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
         const body = await readBody(event)
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Validar campos requeridos
+        // Validate required fields
         if (!body.agentId) {
             return {
                 success: false,
-                message: 'Agent ID requerido',
-                error: 'El campo agentId es obligatorio'
+                message: 'Agent ID required',
+                error: 'The agentId field is mandatory'
             }
         }
 
-        // Preparar datos del chat
+        // Prepare chat data
         const chatData: any = {
             userId: userId,
             agentId: body.agentId.trim()
         }
 
-        // Solo agregar campos opcionales si tienen valor
+        // Only add optional fields if they have a value
         if (body.title?.trim()) {
             chatData.title = body.title.trim()
         }
 
-        // Crear el chat
+        // Create the chat
         const newChat = await createChat(chatData)
 
         return {
             success: true,
-            message: 'Chat creado exitosamente',
+            message: 'Chat created successfully',
             data: newChat
         }
     } catch (error) {
-        console.error('Error al crear chat:', error)
+        console.error('Error creating chat:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('no tiene acceso a este agente')) {
+            if (error.message.includes('does not have access to this agent')) {
                 return {
                     success: false,
-                    message: 'Acceso denegado',
+                    message: 'Access denied',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('no existe o no está activo')) {
+            if (error.message.includes('does not exist or is not active')) {
                 return {
                     success: false,
-                    message: 'Usuario o agente inválido',
+                    message: 'Invalid user or agent',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
@@ -84,8 +84,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
 
         return {
             success: false,
-            message: 'Error al crear el chat',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error creating chat',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

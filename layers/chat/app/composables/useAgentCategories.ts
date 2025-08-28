@@ -1,4 +1,4 @@
-// Tipos espec�ficos para la respuesta del endpoint
+// Specific types for the endpoint response
 export interface UserAgentData {
     id: string
     name: string
@@ -33,12 +33,12 @@ export default function useAgentCategories() {
 
     const { userId, isAuthenticated } = useAuth()
 
-    // Usar $fetch directamente para control total
+    // Use $fetch directly for full control
     const data = ref<{ success: boolean; data: CategoryWithUserAgents[] } | null>(null)
 
     async function fetchUserAgentCategories() {
         if (!userId.value) {
-            error.value = 'Usuario no autenticado'
+            error.value = 'User not authenticated'
             return
         }
 
@@ -62,24 +62,24 @@ export default function useAgentCategories() {
             }
         } catch (err) {
             console.error('Error fetching user agent categories:', err)
-            error.value = 'Error al cargar las categorías de agentes'
+            error.value = 'Error loading agent categories'
             categoriesWithAgents.value = []
         } finally {
             isLoading.value = false
         }
     }
 
-    // Auto-ejecutar solo cuando esté completamente autenticado
+    // Auto-execute only when fully authenticated
     watchEffect(async () => {
         if (isAuthenticated.value && userId.value) {
-            // Esperar un tick para asegurar que todo esté hidratado
+            // Wait for a tick to ensure everything is hydrated
             await nextTick()
             await fetchUserAgentCategories()
         }
     })
 
 
-    // Computadas memoizadas
+    // Memoized computed properties
     const totalAgents = computed(() =>
         categoriesWithAgents.value.reduce((total, cat) => total + cat.agents.length, 0)
     )
@@ -92,23 +92,23 @@ export default function useAgentCategories() {
         categoriesWithAgents.value.flatMap(cat => cat.agents).filter(agent => !agent.isFree)
     )
 
-    // Función para refrescar los datos
+    // Function to refresh data
     async function refreshData() {
         await fetchUserAgentCategories()
     }
 
     return {
-        // Estados principales (ya ordenados desde la API)
+        // Main states (already sorted from the API)
         categoriesWithAgents: categoriesWithAgents,
         isLoading: readonly(isLoading),
         error: readonly(error),
 
-        // Computadas útiles
+        // Useful computed properties
         totalAgents: readonly(totalAgents),
         freeAgents: readonly(freeAgents),
         premiumAgents: readonly(premiumAgents),
 
-        // Funciones
+        // Functions
         fetchUserAgentCategories,
         refreshData
     }

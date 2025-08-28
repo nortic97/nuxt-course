@@ -3,10 +3,10 @@ import { createError, getRequestHeader, defineEventHandler, getCookie } from 'h3
 import { ofetch } from 'ofetch'
 import { logger } from '../utils/logger'
 
-// Middleware para verificar autenticación y usuario
-// Verifica el header x-user-id y lo agrega al contexto del evento
+// Middleware to verify authentication and user
+// Verifies the x-user-id header and adds it to the event context
 
-// Rutas que NO requieren autenticación
+// Routes that DO NOT require authentication
 const publicRoutes = [
   '/api/auth',
   '/auth',
@@ -14,17 +14,17 @@ const publicRoutes = [
   '/__nuxt',
   '/_ipx',
   '/favicon.ico',
-  '/api/users' // Permitir todas las rutas de usuarios (incluye /api/users/[id])
+  '/api/users' // Allow all user routes (includes /api/users/[id])
 ]
 
-// Rutas que SI requieren autenticación
+// Routes that DO require authentication
 const protectedRoutes = [
   '/api/chat',
   '/api/chats',
   '/api/agent',
   '/api/agents',
-  // '/api/user', // Comentamos esta para permitir el registro
-  // '/api/users', // Comentamos esta para permitir la creación de usuarios
+  // '/api/user', // Commented out to allow registration
+  // '/api/users', // Commented out to allow user creation
   '/chat',
   '/chats',
   '/profile'
@@ -33,20 +33,20 @@ const protectedRoutes = [
 export default defineEventHandler(async (event: H3Event) => {
   const url = event.node.req.url || ''
 
-  // Verificar si es una ruta pública
+  // Check if it's a public route
   const isPublicRoute = publicRoutes.some(route => {
-    // Si la URL comienza con la ruta pública o es una ruta de usuario con ID
+    // If the URL starts with the public route or is a user route with an ID
     return url.startsWith(route) ||
       /^\/api\/users\/[a-f0-9-]+$/.test(url.split('?')[0])
   })
 
-  // Si es una ruta pública, continuar sin verificar autenticación
+  // If it's a public route, continue without checking authentication
   if (isPublicRoute) {
-    // Si es una ruta de usuario con ID, agregar el ID al contexto
+    // If it's a user route with an ID, add the ID to the context
     const userIdMatch = url.match(/^\/api\/users\/([a-f0-9-]+)/)
     if (userIdMatch && userIdMatch[1]) {
       event.context.userId = userIdMatch[1]
-      logger.debug('Acceso a ruta pública con ID de usuario', { 
+      logger.debug('Accessing public route with user ID', { 
         url, 
         userId: userIdMatch[1] 
       })
@@ -54,37 +54,37 @@ export default defineEventHandler(async (event: H3Event) => {
     return
   }
 
-  // Verificar si es una ruta protegida
+  // Check if it's a protected route
   const isProtectedRoute = protectedRoutes.some(route =>
     url.startsWith(route)
   )
 
-  // Si no es una ruta protegida, continuar sin verificar autenticación
+  // If it's not a protected route, continue without checking authentication
   if (!isProtectedRoute) {
     return
   }
 
-  logger.debug('Verificando autenticación para ruta protegida', { url })
+  logger.debug('Verifying authentication for protected route', { url })
 
-  // Obtener el ID de usuario del header o de la cookie
+  // Get user ID from header or cookie
   let userId = normalizeUserId(getRequestHeader(event, 'x-user-id'))
   const authSource = userId ? 'header' : null
 
-  // Si no está en el header, buscar en las cookies
+  // If not in the header, check cookies
   if (!userId) {
 
     userId = normalizeUserId(getCookie(event, 'x-user-id'))
 
     if (userId) {
-      logger.debug('x-user-id obtenido de la cookie', { userId })
+      logger.debug('x-user-id obtained from cookie', { userId })
     }
   } else {
-    logger.debug('x-user-id obtenido del header', { userId })
+    logger.debug('x-user-id obtained from header', { userId })
   }
 
-  // Si no hay userId, devolver error de no autorizado
+  // If there's no userId, return an unauthorized error
   if (!userId) {
-    logger.warn('Intento de acceso no autorizado', { 
+    logger.warn('Unauthorized access attempt', { 
       url, 
       method: event.node.req.method,
       ip: event.node.req.socket.remoteAddress
@@ -92,17 +92,17 @@ export default defineEventHandler(async (event: H3Event) => {
     
     throw createError({
       statusCode: 401,
-      statusMessage: 'No autorizado: Se requiere autenticación',
+      statusMessage: 'Unauthorized: Authentication is required',
     })
   }
 
-  // Si llegamos aquí, el usuario está autenticado
+  // If we get here, the user is authenticated
   event.context.userId = userId
-  logger.info('Usuario autenticado', { userId })
+  logger.info('User authenticated', { userId })
 
-  // Verificar si el usuario existe
+  // Verify if the user exists
   try {
-    // Obtener la URL base del host
+    // Get the base URL from the host
     const host = event.node.req.headers.host || 'localhost:3000'
     const protocol = host.includes('localhost') ? 'http' : 'https'
     const baseUrl = `${protocol}://${host}`
@@ -116,53 +116,52 @@ export default defineEventHandler(async (event: H3Event) => {
     })
 
     if (!user) {
-      const error = new Error('Usuario no encontrado')
-      logger.error('Error al verificar el usuario', error, { userId })
+      const error = new Error('User not found')
+      logger.error('Error verifying user', error, { userId })
       
       throw createError({
         statusCode: 404,
-        statusMessage: 'Usuario no encontrado'
+        statusMessage: 'User not found'
       })
     }
 
-    // Agregar la información del usuario al contexto
+    // Add user information to the context
     event.context.user = user.data
-    logger.debug('Usuario verificado', { 
+    logger.debug('User verified', { 
       userId: user.data.id, 
       email: user.data.email,
       ip: event.node.req.socket.remoteAddress
     })
 
   } catch (error) {
-    logger.error('Error al verificar el usuario', error as Error, { userId })
+    logger.error('Error verifying user', error as Error, { userId })
     
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error interno del servidor al verificar el usuario',
+      statusMessage: 'Internal server error while verifying user',
     })
   }
 })
 
 /**
- * Normaliza el userId para asegurar que sea un string válido
- * @param userId - El userId que puede ser string, objeto, o undefined
- * @returns string normalizado o null si no es válido
+ * Normalizes the userId to ensure it's a valid string
+ * @param userId - The userId which can be a string, object, or undefined
+ * @returns Normalized string or null if invalid
  */
 function normalizeUserId(userId: any): string | null {
   if (!userId) return null
 
-  // Si ya es string, devolverlo
+  // If it's already a string, return it
   if (typeof userId === 'string') {
     return userId.trim()
   }
 
-  // Si es un objeto, convertir a JSON string
+  // If it's an object, convert to JSON string
   if (typeof userId === 'object') {
-    console.warn('userId es un objeto, convirtiendo a string:', userId)
+    console.warn('userId is an object, converting to string:', userId)
     return JSON.stringify(userId)
   }
 
-  // Para otros tipos (number, etc.), convertir a string
+  // For other types (number, etc.), convert to string
   return String(userId)
 }
-

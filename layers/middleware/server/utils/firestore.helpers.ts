@@ -4,30 +4,30 @@ import { firestoreClient } from './firebase.client'
 import type { DocumentBase, BaseQueryOptions } from '../types/types'
 
 /**
- * Genera un nuevo UUID v4
+ * Generates a new UUID v4
  */
 export function generateId(): string {
     return uuidv4()
 }
 
 /**
- * Valida si un string es un UUID v4 válido
+ * Validates if a string is a valid UUID v4
  */
 export function isValidId(id: string): boolean {
     return typeof id === 'string' && uuidValidate(id) && id.length === 36
 }
 
 /**
- * Valida un ID y lanza un error si no es válido
- * @throws {Error} Si el ID no es un UUID válido
+ * Validates an ID and throws an error if it is not valid
+ * @throws {Error} If the ID is not a valid UUID
  */
 export function validateId(id: string, fieldName: string = 'ID'): void {
     if (!isValidId(id)) {
-        throw new Error(`${fieldName} debe ser un UUID válido`)
+        throw new Error(`${fieldName} must be a valid UUID`)
     }
 }
 
-// Crear timestamps
+// Create timestamps
 export function createTimestamps() {
     const now = Timestamp.now()
     return {
@@ -36,14 +36,14 @@ export function createTimestamps() {
     }
 }
 
-// Actualizar timestamp
+// Update timestamp
 export function updateTimestamp() {
     return {
         updatedAt: Timestamp.now()
     }
 }
 
-// Convertir documento de Firestore a objeto con ID
+// Convert Firestore document to an object with an ID
 export function docToObject<T extends DocumentBase>(
     doc: FirebaseFirestore.DocumentSnapshot
 ): T | null {
@@ -55,7 +55,7 @@ export function docToObject<T extends DocumentBase>(
     } as T
 }
 
-// Convertir QuerySnapshot a array de objetos
+// Convert QuerySnapshot to an array of objects
 export function queryToArray<T extends DocumentBase>(
     querySnapshot: FirebaseFirestore.QuerySnapshot
 ): T[] {
@@ -65,31 +65,31 @@ export function queryToArray<T extends DocumentBase>(
     })) as T[]
 }
 
-// Construir query con filtros
+// Build a query with filters
 export function buildQuery(
     collection: FirebaseFirestore.CollectionReference,
     options: BaseQueryOptions = {}
 ): FirebaseFirestore.Query {
     let query: FirebaseFirestore.Query = collection
 
-    // Aplicar filtros where
+    // Apply where filters
     if (options.where) {
         options.where.forEach(filter => {
             query = query.where(filter.field, filter.operator, filter.value)
         })
     }
 
-    // Aplicar ordenamiento
+    // Apply ordering
     if (options.orderBy) {
         query = query.orderBy(options.orderBy, options.orderDirection || 'asc')
     }
 
-    // Aplicar offset
+    // Apply offset
     if (options.offset) {
         query = query.offset(options.offset)
     }
 
-    // Aplicar limit
+    // Apply limit
     if (options.limit) {
         query = query.limit(options.limit)
     }
@@ -97,7 +97,7 @@ export function buildQuery(
     return query
 }
 
-// Verificar si un documento existe
+// Check if a document exists
 export async function documentExists(
     collectionName: string,
     docId: string
@@ -106,7 +106,7 @@ export async function documentExists(
     return doc.exists
 }
 
-// Obtener documento por ID
+// Get a document by ID
 export async function getDocumentById<T extends DocumentBase>(
     collectionName: string,
     docId: string,
@@ -119,18 +119,18 @@ export async function getDocumentById<T extends DocumentBase>(
     return docToObject<T>(doc)
 }
 
-// Crear documento
+// Create a document
 export async function createDocument<T extends Partial<DocumentBase>>(
     collectionName: string,
     data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
     customId?: string
 ): Promise<T & DocumentBase> {
-    // Validar que no se esté intentando sobrescribir un documento existente
+    // Validate that we are not trying to overwrite an existing document
     if (customId) {
         validateId(customId, `${collectionName} ID`)
         const exists = await documentExists(collectionName, customId)
         if (exists) {
-            throw new Error(`Ya existe un documento en ${collectionName} con el ID proporcionado`)
+            throw new Error(`A document already exists in ${collectionName} with the provided ID`)
         }
     }
     const id = customId || generateId()
@@ -147,19 +147,19 @@ export async function createDocument<T extends Partial<DocumentBase>>(
     return documentData
 }
 
-// Actualizar documento
+// Update a document
 export async function updateDocument<T extends DocumentBase>(
     collectionName: string,
     docId: string,
     data: Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<T | null> {
-    // Protección adicional en runtime
+    // Additional runtime protection
     const forbiddenFields = ['id', 'createdAt', 'updatedAt']
     const dataKeys = Object.keys(data)
     const hasForbiddenFields = dataKeys.some(key => forbiddenFields.includes(key))
 
     if (hasForbiddenFields) {
-        throw new Error(`No se pueden actualizar los campos: ${forbiddenFields.join(', ')}`)
+        throw new Error(`The following fields cannot be updated: ${forbiddenFields.join(', ')}`)
     }
 
     const updateData = {
@@ -171,7 +171,7 @@ export async function updateDocument<T extends DocumentBase>(
     return await getDocumentById<T>(collectionName, docId)
 }
 
-// Eliminar documento (soft delete)
+// Delete a document (soft delete)
 export async function softDeleteDocument(
     collectionName: string,
     docId: string
@@ -182,7 +182,7 @@ export async function softDeleteDocument(
     })
 }
 
-// Eliminar documento permanentemente
+// Permanently delete a document
 export async function deleteDocument(
     collectionName: string,
     docId: string
@@ -190,7 +190,7 @@ export async function deleteDocument(
     await firestoreClient.collection(collectionName).doc(docId).delete()
 }
 
-// Obtener documentos con paginación
+// Get documents with pagination
 export async function getPaginatedDocuments<T extends DocumentBase>(
     collectionName: string,
     options: BaseQueryOptions & { page?: number } = {}
@@ -203,19 +203,19 @@ export async function getPaginatedDocuments<T extends DocumentBase>(
     const { page = 1, limit = 10, ...queryOptions } = options
     const offset = (page - 1) * limit
 
-    // Construir query para documentos
+    // Build query for documents
     const query = buildQuery(
         firestoreClient.collection(collectionName),
         { ...queryOptions, limit, offset }
     )
 
-    // Construir query para contar total (sin limit/offset)
+    // Build query to count total (without limit/offset)
     const countQuery = buildQuery(
         firestoreClient.collection(collectionName),
         { where: queryOptions.where }
     )
 
-    // Ejecutar ambas queries
+    // Execute both queries
     const [querySnapshot, countSnapshot] = await Promise.all([
         query.get(),
         countQuery.get()
@@ -234,15 +234,15 @@ export async function getPaginatedDocuments<T extends DocumentBase>(
     }
 }
 
-// Buscar documentos por texto
+// Search documents by text
 export async function searchDocuments<T extends DocumentBase>(
     collectionName: string,
     searchField: string,
     searchTerm: string,
     options: BaseQueryOptions = {}
 ): Promise<T[]> {
-    // Firestore no tiene búsqueda de texto completo nativa
-    // Implementamos búsqueda por prefijo
+    // Firestore does not have native full-text search
+    // We implement a prefix search
     const query = buildQuery(
         firestoreClient.collection(collectionName),
         {
@@ -267,7 +267,7 @@ export async function searchDocuments<T extends DocumentBase>(
     return queryToArray<T>(querySnapshot)
 }
 
-// Validar que los campos requeridos estén presentes
+// Validate that required fields are present
 export function validateRequiredFields<T extends Record<string, unknown>>(
     data: T,
     requiredFields: (keyof T)[]

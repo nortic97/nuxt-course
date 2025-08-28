@@ -16,10 +16,10 @@ const emit = defineEmits(["send-message", "retry"]);
 const { showScrollButton, scrollToBottom, pinToBottom } = useChatScroll();
 const route = useRoute();
 
-// Estado local para el mensaje de error
+// Local state for error message
 const localError = ref<string | null>(null);
 
-// Actualizar el error local cuando cambie el prop
+// Update local error when prop changes
 watch(
   () => props.error,
   (newError) => {
@@ -27,7 +27,7 @@ watch(
   }
 );
 
-// Manejar el envío de mensajes
+// Handle sending messages
 function handleSendMessage(message: string) {
   if (message.trim()) {
     localError.value = null;
@@ -35,13 +35,13 @@ function handleSendMessage(message: string) {
   }
 }
 
-// Reintentar la carga si hay un error
+// Retry loading if there's an error
 function handleRetry() {
   localError.value = null;
   emit("retry");
 }
 
-// Configurar el observador de mensajes
+// Set up message observer
 watch(() => props.messages, pinToBottom, { deep: true });
 </script>
 
@@ -57,7 +57,7 @@ watch(() => props.messages, pinToBottom, { deep: true });
             name="i-heroicons-arrow-path"
             class="w-12 h-12 text-primary-500 animate-spin"
           />
-          <p class="text-gray-500 dark:text-gray-400">Cargando chat...</p>
+          <p class="text-gray-500 dark:text-gray-400">Loading chat...</p>
         </div>
       </div>
 
@@ -76,7 +76,7 @@ watch(() => props.messages, pinToBottom, { deep: true });
               </div>
               <div class="ml-3">
                 <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
-                  Error al cargar el chat
+                  Error loading chat
                 </h3>
                 <div class="mt-2 text-sm text-red-700 dark:text-red-300">
                   <p>{{ localError }}</p>
@@ -90,7 +90,7 @@ watch(() => props.messages, pinToBottom, { deep: true });
                     @click="handleRetry"
                   >
                     <UIcon name="i-heroicons-arrow-path" class="h-4 w-4" />
-                    <span>Reintentar</span>
+                    <span>Retry</span>
                   </UButton>
                 </div>
               </div>
@@ -120,10 +120,10 @@ watch(() => props.messages, pinToBottom, { deep: true });
           </svg>
         </div>
         <h3 class="mb-2 text-xl font-medium text-gray-900 dark:text-white">
-          ¡Bienvenido al chat!
+          Welcome to the chat!
         </h3>
         <p class="max-w-md mb-6 text-gray-500 dark:text-gray-400">
-          Escribe un mensaje para comenzar a chatear con el asistente.
+          Type a message to start chatting with the assistant.
         </p>
         <div class="w-full max-w-md">
           <ChatInput :disabled="isLoading" @send-message="handleSendMessage" />
@@ -172,14 +172,14 @@ watch(() => props.messages, pinToBottom, { deep: true });
     </UContainer>
   </div>
 
-  <!-- Agregar después del componente de mensajes -->
+  <!-- Add after the messages component -->
   <div v-if="isStreaming" class="flex items-center space-x-2 px-4 py-2 text-gray-500">
     <div class="animate-pulse flex space-x-1">
       <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
       <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
       <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
     </div>
-    <span class="text-sm">IA escribiendo...</span>
+    <span class="text-sm">AI is writing...</span>
   </div>
 </template>
 

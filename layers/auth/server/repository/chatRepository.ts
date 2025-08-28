@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase-admin/firestore'
 import { $fetch } from 'ofetch'
 
-// Interfaz para la respuesta de la API
+// Interface for the API response
 interface ApiResponse<T> {
     success: boolean
     message: string
@@ -9,7 +9,7 @@ interface ApiResponse<T> {
     error?: string
 }
 
-// Interfaz para respuesta paginada
+// Interface for paginated response
 interface PaginatedResponse<T> {
     success: boolean
     message: string
@@ -24,7 +24,7 @@ interface PaginatedResponse<T> {
     }
 }
 
-// Interfaz para el chat (compatible con la capa base)
+// Interface for a chat (compatible with the base layer)
 interface Chat {
     id: string
     title: string
@@ -40,14 +40,14 @@ interface Chat {
     }
 }
 
-// Interfaz para crear un chat
+// Interface for creating a chat
 interface CreateChatData {
     title?: string
     agentId: string
 }
 
 /**
- * Obtener chats de un usuario usando la API de la capa base
+ * Get chats for a user using the base layer API
  */
 export async function getChatsByUserViaAPI(
     userId: string,
@@ -75,22 +75,22 @@ export async function getChatsByUserViaAPI(
         }) as PaginatedResponse<Chat>
 
         if (!response.success) {
-            throw new Error(response.error || 'Error al obtener chats')
+            throw new Error(response.error || 'Error fetching chats')
         }
 
         return response.data || []
     } catch (error) {
-        console.error('Error en getChatsByUserViaAPI:', error)
+        console.error('Error in getChatsByUserViaAPI:', error)
         throw new Error(
             error instanceof Error
                 ? error.message
-                : 'Error desconocido al obtener chats'
+                : 'Unknown error fetching chats'
         )
     }
 }
 
 /**
- * Crear un nuevo chat usando la API de la capa base
+ * Create a new chat using the base layer API
  */
 export async function createChatViaAPI(
     userId: string,
@@ -109,22 +109,22 @@ export async function createChatViaAPI(
         }) as ApiResponse<Chat>
 
         if (!response.success || !response.data) {
-            throw new Error(response.error || 'Error al crear chat')
+            throw new Error(response.error || 'Error creating chat')
         }
 
         return response.data
     } catch (error) {
-        console.error('Error en createChatViaAPI:', error)
+        console.error('Error in createChatViaAPI:', error)
         throw new Error(
             error instanceof Error
                 ? error.message
-                : 'Error desconocido al crear chat'
+                : 'Unknown error creating chat'
         )
     }
 }
 
 /**
- * Obtener un chat específico por ID usando la API de la capa base
+ * Get a specific chat by ID using the base layer API
  */
 export async function getChatByIdViaAPI(
     chatId: string,
@@ -139,23 +139,23 @@ export async function getChatByIdViaAPI(
         }) as ApiResponse<Chat>
 
         if (!response.success) {
-            if (response.error?.includes('no encontrado')) {
+            if (response.error?.includes('not found')) {
                 return null
             }
-            throw new Error(response.error || 'Error al obtener chat')
+            throw new Error(response.error || 'Error fetching chat')
         }
 
         return response.data || null
     } catch (error) {
-        console.error('Error en getChatByIdViaAPI:', error)
-        // Si es un error 404, retornar null
+        console.error('Error in getChatByIdViaAPI:', error)
+        // If it's a 404 error, return null
         if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
             return null
         }
         throw new Error(
             error instanceof Error
                 ? error.message
-                : 'Error desconocido al obtener chat'
+                : 'Unknown error fetching chat'
         )
     }
 }

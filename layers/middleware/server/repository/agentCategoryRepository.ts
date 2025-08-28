@@ -17,7 +17,7 @@ import type {
 
 const COLLECTION_NAME = 'agentCategories'
 
-// Obtener todas las categorías con paginación
+// Get all categories with pagination
 export async function getAllAgentCategories(params: PaginationParams = {}) {
     const { page = 1, limit = 10, orderBy = 'name', orderDirection = 'asc' } = params
 
@@ -32,20 +32,20 @@ export async function getAllAgentCategories(params: PaginationParams = {}) {
     })
 }
 
-// Obtener categoría por ID
+// Get category by ID
 export async function getAgentCategoryById(id: string): Promise<AgentCategory | null> {
     return await getDocumentById<AgentCategory>(COLLECTION_NAME, id)
 }
 
-// Crear nueva categoría
+// Create a new category
 export async function createAgentCategory(data: CreateAgentCategoryRequest): Promise<AgentCategory> {
-    // Validar campos requeridos
+    // Validate required fields
     const validation = validateRequiredFields(data, ['name'])
     if (!validation.isValid) {
-        throw new Error(`Campos requeridos faltantes: ${validation.missingFields.join(', ')}`)
+        throw new Error(`Missing required fields: ${validation.missingFields.join(', ')}`)
     }
 
-    // Verificar que el nombre no exista
+    // Check if the name already exists
     const existingCategories = await firestoreClient
         .collection(COLLECTION_NAME)
         .where('name', '==', data.name)
@@ -53,10 +53,10 @@ export async function createAgentCategory(data: CreateAgentCategoryRequest): Pro
         .get()
 
     if (!existingCategories.empty) {
-        throw new Error('Ya existe una categoría con ese nombre')
+        throw new Error('A category with that name already exists')
     }
 
-    // Crear la categoría
+    // Create the category
     const categoryData = {
         ...data,
         isActive: true
@@ -65,18 +65,18 @@ export async function createAgentCategory(data: CreateAgentCategoryRequest): Pro
     return await createDocument<AgentCategory>(COLLECTION_NAME, categoryData as AgentCategory)
 }
 
-// Actualizar categoría
+// Update a category
 export async function updateAgentCategory(
     id: string,
     data: UpdateAgentCategoryRequest
 ): Promise<AgentCategory | null> {
-    // Verificar que la categoría existe
+    // Check if the category exists
     const existingCategory = await getAgentCategoryById(id)
     if (!existingCategory) {
-        throw new Error('Categoría no encontrada')
+        throw new Error('Category not found')
     }
 
-    // Si se está actualizando el nombre, verificar que no exista otro con el mismo nombre
+    // If the name is being updated, check if another category with the same name already exists
     if (data.name && data.name !== existingCategory.name) {
         const existingCategories = await firestoreClient
             .collection(COLLECTION_NAME)
@@ -87,7 +87,7 @@ export async function updateAgentCategory(
         if (!existingCategories.empty) {
             const duplicateCategory = existingCategories.docs[0]
             if (duplicateCategory?.id !== id) {
-                throw new Error('Ya existe una categoría con ese nombre')
+                throw new Error('A category with that name already exists')
             }
         }
     }
@@ -95,15 +95,15 @@ export async function updateAgentCategory(
     return await updateDocument<AgentCategory>(COLLECTION_NAME, id, data)
 }
 
-// Eliminar categoría (soft delete)
+// Delete a category (soft delete)
 export async function deleteAgentCategory(id: string): Promise<void> {
-    // Verificar que la categoría existe
+    // Check if the category exists
     const existingCategory = await getAgentCategoryById(id)
     if (!existingCategory) {
-        throw new Error('Categoría no encontrada')
+        throw new Error('Category not found')
     }
 
-    // Verificar que no tenga agentes activos
+    // Check if it has active agents
     const agentsInCategory = await firestoreClient
         .collection('agents')
         .where('categoryId', '==', id)
@@ -111,13 +111,13 @@ export async function deleteAgentCategory(id: string): Promise<void> {
         .get()
 
     if (!agentsInCategory.empty) {
-        throw new Error('No se puede eliminar una categoría que tiene agentes activos')
+        throw new Error('Cannot delete a category that has active agents')
     }
 
     await softDeleteDocument(COLLECTION_NAME, id)
 }
 
-// Buscar categorías por nombre
+// Search categories by name
 export async function searchAgentCategories(searchTerm: string): Promise<AgentCategory[]> {
     return await searchDocuments<AgentCategory>(
         COLLECTION_NAME,
@@ -133,7 +133,7 @@ export async function searchAgentCategories(searchTerm: string): Promise<AgentCa
     )
 }
 
-// Obtener categorías activas (para selects)
+// Get active categories (for selects)
 export async function getActiveAgentCategories(): Promise<AgentCategory[]> {
     const querySnapshot = await firestoreClient
         .collection(COLLECTION_NAME)
@@ -147,7 +147,7 @@ export async function getActiveAgentCategories(): Promise<AgentCategory[]> {
     })) as AgentCategory[]
 }
 
-// Verificar si una categoría existe y está activa
+// Check if a category exists and is active
 export async function isAgentCategoryActive(id: string): Promise<boolean> {
     const category = await getAgentCategoryById(id)
     return category?.isActive === true

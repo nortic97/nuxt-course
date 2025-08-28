@@ -4,14 +4,14 @@ import { logger } from '../../utils/logger'
 
 export default defineEventHandler(async (): Promise<ApiResponse<null>> => {
     try {
-        // ⚠️ SOLO PARA DESARROLLO - En producción agregar autenticación admin
+        // ⚠️ DEVELOPMENT ONLY - Add admin authentication in production
         const isDevelopment = process.env.NODE_ENV === 'development'
 
         if (!isDevelopment) {
             return {
                 success: false,
-                message: 'Endpoint solo disponible en desarrollo',
-                error: 'Esta operación solo está permitida en modo desarrollo'
+                message: 'Endpoint only available in development',
+                error: 'This operation is only allowed in development mode'
             }
         }
 
@@ -19,18 +19,18 @@ export default defineEventHandler(async (): Promise<ApiResponse<null>> => {
 
         return {
             success: true,
-            message: 'Migración completada exitosamente',
+            message: 'Migration completed successfully',
             data: null
         }
     } catch (error) {
-        logger.error('Error en migración', error as Error, {
+        logger.error('Migration error', error as Error, {
             endpoint: '/api/admin/migrate',
             method: 'POST'
         })
         return {
             success: false,
-            message: 'Error en la migración',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error during migration',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

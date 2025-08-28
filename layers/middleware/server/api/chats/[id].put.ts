@@ -7,64 +7,64 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
         const body = await readBody(event)
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
         if (!chatId) {
             return {
                 success: false,
-                message: 'ID de chat requerido',
-                error: 'No se proporcionó el ID del chat'
+                message: 'Chat ID required',
+                error: 'Chat ID was not provided'
             }
         }
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Preparar datos de actualización
+        // Prepare update data
         const updateData: Partial<Chat> = {}
 
         if (body.title !== undefined) {
-            updateData.title = body.title?.trim() || 'Chat sin título'
+            updateData.title = body.title?.trim() || 'Untitled Chat'
         }
 
-        // Actualizar el chat
+        // Update the chat
         const updatedChat = await updateChat(chatId, userId, updateData)
 
         if (!updatedChat) {
             return {
                 success: false,
-                message: 'Error al actualizar',
-                error: 'No se pudo actualizar el chat'
+                message: 'Error during update',
+                error: 'Could not update the chat'
             }
         }
 
         return {
             success: true,
-            message: 'Chat actualizado exitosamente',
+            message: 'Chat updated successfully',
             data: updatedChat
         }
     } catch (error) {
-        console.error('Error al actualizar chat:', error)
+        console.error('Error updating chat:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('no encontrado o no tienes permisos')) {
+            if (error.message.includes('not found or you do not have permission')) {
                 return {
                     success: false,
-                    message: 'Chat no encontrado',
+                    message: 'Chat not found',
                     error: error.message
                 }
             }
@@ -72,8 +72,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<Chat>> => {
 
         return {
             success: false,
-            message: 'Error al actualizar el chat',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error updating chat',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

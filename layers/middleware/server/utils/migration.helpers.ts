@@ -3,17 +3,17 @@ import { updateTimestamp } from './firestore.helpers'
 import { logger } from './logger'
 
 /**
- * Migrar documentos existentes para agregar el campo ID
- * USAR SOLO UNA VEZ para migrar datos existentes
+ * Migrate existing documents to add the ID field.
+ * USE ONLY ONCE to migrate existing data.
  */
 export async function migrateDocumentsAddId(collectionName: string): Promise<void> {
-    logger.info(`Iniciando migración de ${collectionName}...`)
+    logger.info(`Starting migration for ${collectionName}...`)
 
     try {
         const snapshot = await firestoreClient.collection(collectionName).get()
 
         if (snapshot.empty) {
-            logger.info(`No hay documentos en ${collectionName} para migrar`)
+            logger.info(`No documents to migrate in ${collectionName}`)
             return
         }
 
@@ -23,7 +23,7 @@ export async function migrateDocumentsAddId(collectionName: string): Promise<voi
         snapshot.docs.forEach(doc => {
             const data = doc.data()
 
-            // Solo agregar ID si no existe
+            // Only add ID if it doesn't exist
             if (!data.id) {
                 const docRef = firestoreClient.collection(collectionName).doc(doc.id)
                 batch.update(docRef, {
@@ -36,18 +36,18 @@ export async function migrateDocumentsAddId(collectionName: string): Promise<voi
 
         if (count > 0) {
             await batch.commit()
-            logger.info(`Migración completada: ${count} documentos actualizados en ${collectionName}`)
+            logger.info(`Migration completed: ${count} documents updated in ${collectionName}`)
         } else {
-            logger.info(`Todos los documentos en ${collectionName} ya tienen campo ID`)
+            logger.info(`All documents in ${collectionName} already have an ID field`)
         }
     } catch (error) {
-        logger.error(`Error en migración de ${collectionName}`, error as Error, { collectionName })
+        logger.error(`Error migrating ${collectionName}`, error as Error, { collectionName })
         throw error
     }
 }
 
 /**
- * Migrar todas las colecciones principales
+ * Migrate all main collections.
  */
 export async function migrateAllCollections(): Promise<void> {
     const collections = ['users', 'agents', 'agentCategories', 'userAgents', 'chats', 'messages']
@@ -56,7 +56,7 @@ export async function migrateAllCollections(): Promise<void> {
         await migrateDocumentsAddId(collection)
     }
 
-    logger.info('Migración completa de todas las colecciones', {
+    logger.info('Migration of all collections complete', {
       collections: collections.join(', ')
     })
 }

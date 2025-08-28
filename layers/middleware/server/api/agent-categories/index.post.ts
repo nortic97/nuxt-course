@@ -5,55 +5,55 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
     try {
         const body = await readBody(event) as CreateAgentCategoryRequest
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Validar campos requeridos
+        // Validate required fields
         if (!body.name || body.name.trim() === '') {
             return {
                 success: false,
-                message: 'El nombre es requerido',
-                error: 'El campo name es obligatorio'
+                message: 'Name is required',
+                error: 'The name field is mandatory'
             }
         }
 
-        // Limpiar y validar datos
+        // Sanitize and validate data
         const categoryData: CreateAgentCategoryRequest = {
             name: body.name.trim(),
             description: body.description?.trim() || undefined
         }
 
-        // Crear la categoría
+        // Create the category
         const newCategory = await createAgentCategory(categoryData)
 
         return {
             success: true,
-            message: 'Categoría creada exitosamente',
+            message: 'Category created successfully',
             data: newCategory
         }
     } catch (error) {
-        console.error('Error al crear categoría:', error)
+        console.error('Error creating category:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('Ya existe una categoría')) {
+            if (error.message.includes('A category with this name already exists')) {
                 return {
                     success: false,
-                    message: 'Categoría duplicada',
+                    message: 'Duplicate category',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
@@ -61,8 +61,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
 
         return {
             success: false,
-            message: 'Error al crear la categoría',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error creating category',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

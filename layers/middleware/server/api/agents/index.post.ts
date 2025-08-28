@@ -5,16 +5,16 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
     try {
         const body = await readBody(event) as CreateAgentRequest
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Required data missing',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Validar campos requeridos
+        // Validate required fields
         const requiredFields = ['name', 'price', 'categoryId']
         const missingFields = requiredFields.filter(field =>
             !body[field as keyof CreateAgentRequest] && body[field as keyof CreateAgentRequest] !== 0
@@ -23,29 +23,29 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
         if (missingFields.length > 0) {
             return {
                 success: false,
-                message: 'Campos requeridos faltantes',
-                error: `Los siguientes campos son obligatorios: ${missingFields.join(', ')}`
+                message: 'Missing required fields',
+                error: `The following fields are required: ${missingFields.join(', ')}`
             }
         }
 
-        // Validar tipos de datos
+        // Validate data types
         if (typeof body.price !== 'number' || body.price < 0) {
             return {
                 success: false,
-                message: 'Precio inválido',
-                error: 'El precio debe ser un número mayor o igual a 0'
+                message: 'Invalid price',
+                error: 'Price must be a number greater than or equal to 0'
             }
         }
 
         if (!body.name.trim()) {
             return {
                 success: false,
-                message: 'Nombre inválido',
-                error: 'El nombre no puede estar vacío'
+                message: 'Invalid name',
+                error: 'Name cannot be empty'
             }
         }
 
-        // Limpiar y validar datos
+        // Sanitize and validate data
         const agentData: CreateAgentRequest = {
             name: body.name.trim(),
             description: body.description?.trim() || undefined,
@@ -57,47 +57,47 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
                 : undefined
         }
 
-        // Crear el agente
+        // Create the agent
         const newAgent = await createAgent(agentData)
 
         return {
             success: true,
-            message: 'Agente creado exitosamente',
+            message: 'Agent created successfully',
             data: newAgent
         }
     } catch (error) {
-        console.error('Error al crear agente:', error)
+        console.error('Error creating agent:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('Ya existe un agente')) {
+            if (error.message.includes('An agent with this name already exists')) {
                 return {
                     success: false,
-                    message: 'Agente duplicado',
+                    message: 'Duplicate agent',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('categoría especificada no existe')) {
+            if (error.message.includes('The specified category does not exist')) {
                 return {
                     success: false,
-                    message: 'Categoría inválida',
+                    message: 'Invalid category',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('precio no puede ser negativo')) {
+            if (error.message.includes('price cannot be negative')) {
                 return {
                     success: false,
-                    message: 'Precio inválido',
+                    message: 'Invalid price',
                     error: error.message
                 }
             }
@@ -105,8 +105,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentWithCa
 
         return {
             success: false,
-            message: 'Error al crear el agente',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error creating agent',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

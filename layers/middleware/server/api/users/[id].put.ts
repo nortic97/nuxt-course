@@ -9,21 +9,21 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
         if (!userId) {
             return {
                 success: false,
-                message: 'ID de usuario requerido',
-                error: 'No se proporcionó el ID del usuario'
+                message: 'User ID required',
+                error: 'User ID was not provided'
             }
         }
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Required data missing',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Preparar datos de actualización (excluir campos inmutables)
+        // Prepare update data (exclude immutable fields)
         const updateData: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'email'>> = {}
 
         if (body.name !== undefined) {
@@ -42,31 +42,31 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
             updateData.subscription = body.subscription
         }
 
-        // Actualizar el usuario
+        // Update the user
         const updatedUser = await updateUser(userId, updateData)
 
         if (!updatedUser) {
             return {
                 success: false,
-                message: 'Error al actualizar',
-                error: 'No se pudo actualizar el usuario'
+                message: 'Error during update',
+                error: 'Could not update the user'
             }
         }
 
         return {
             success: true,
-            message: 'Usuario actualizado exitosamente',
+            message: 'User updated successfully',
             data: updatedUser
         }
     } catch (error) {
-        console.error('Error al actualizar usuario:', error)
+        console.error('Error updating user:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('Usuario no encontrado')) {
+            if (error.message.includes('User not found')) {
                 return {
                     success: false,
-                    message: 'Usuario no encontrado',
+                    message: 'User not found',
                     error: error.message
                 }
             }
@@ -74,8 +74,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<User>> => {
 
         return {
             success: false,
-            message: 'Error al actualizar el usuario',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error updating user',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

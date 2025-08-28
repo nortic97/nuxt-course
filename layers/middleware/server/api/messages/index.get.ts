@@ -7,12 +7,12 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
     try {
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio',
+                message: 'User required',
+                error: 'x-user-id header is mandatory',
                 data: [],
                 pagination: {
                     page: 1,
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
             search
         } = query
 
-        // Si hay búsqueda por contenido
+        // If searching by content
         if (search && typeof search === 'string') {
             const result = await searchMessagesByContent(userId, search, {
                 page: Number(page),
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
 
             return {
                 success: true,
-                message: 'Mensajes encontrados exitosamente',
+                message: 'Messages found successfully',
                 data: result.documents,
                 pagination: {
                     page: Number(page),
@@ -55,12 +55,12 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
             }
         }
 
-        // Validar que se proporcione chatId para otras operaciones
+        // Validate that chatId is provided for other operations
         if (!chatId || typeof chatId !== 'string') {
             return {
                 success: false,
-                message: 'Chat ID requerido',
-                error: 'El parámetro chatId es obligatorio',
+                message: 'Chat ID required',
+                error: 'The chatId parameter is mandatory',
                 data: [],
                 pagination: {
                     page: 1,
@@ -72,13 +72,13 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
             }
         }
 
-        // Si se solicitan mensajes recientes (sin paginación)
+        // If recent messages are requested (no pagination)
         if (recent === 'true') {
             const messages = await getRecentMessagesByChat(chatId, userId, Number(limit) || 20)
 
             return {
                 success: true,
-                message: 'Mensajes recientes obtenidos exitosamente',
+                message: 'Recent messages retrieved successfully',
                 data: messages,
                 pagination: {
                     page: 1,
@@ -90,7 +90,7 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
             }
         }
 
-        // Obtener mensajes con paginación
+        // Get messages with pagination
         const result = await getMessagesByChat(chatId, userId, {
             page: Number(page),
             limit: Number(limit),
@@ -100,7 +100,7 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
 
         return {
             success: true,
-            message: 'Mensajes obtenidos exitosamente',
+            message: 'Messages retrieved successfully',
             data: result.documents,
             pagination: {
                 page: Number(page),
@@ -111,20 +111,20 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Messa
             }
         }
     } catch (error) {
-        console.error('Error al obtener mensajes:', error)
+        console.error('Error getting messages:', error)
 
-        // Manejar errores específicos
-        let errorMessage = 'Error al obtener los mensajes'
+        // Handle specific errors
+        let errorMessage = 'Error getting messages'
         if (error instanceof Error) {
-            if (error.message.includes('no encontrado o no tienes permisos')) {
-                errorMessage = 'Chat no encontrado o sin permisos'
+            if (error.message.includes('not found or you do not have permission')) {
+                errorMessage = 'Chat not found or permission denied'
             }
         }
 
         return {
             success: false,
             message: errorMessage,
-            error: error instanceof Error ? error.message : 'Error desconocido',
+            error: error instanceof Error ? error.message : 'Unknown error',
             data: [],
             pagination: {
                 page: Number(query.page) || 1,

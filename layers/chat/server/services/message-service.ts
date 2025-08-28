@@ -1,11 +1,11 @@
 import type { Message } from '#layers/middleware/server/types/types'
 
 /**
- * Servicio para obtener mensajes desde la capa middleware
+ * Service to get messages from the middleware layer
  */
 export class MessageService {
   /**
-   * Obtiene todos los mensajes de un chat para construir el historial
+   * Gets all messages from a chat to build the history
    */
   static async getChatMessages(chatId: string, userId: string): Promise<Message[]> {
     try {
@@ -17,11 +17,11 @@ export class MessageService {
       })
 
       if (!response.success || !response.data) {
-        console.error('Error obteniendo mensajes del chat:', chatId)
+        console.error('Error getting messages from chat:', chatId)
         return []
       }
 
-      // Filtrar solo mensajes activos y ordenar por fecha
+      // Filter only active messages and sort by date
       return response.data
         .filter(msg => msg.isActive)
         .sort((a, b) => {
@@ -35,13 +35,13 @@ export class MessageService {
           return dateA - dateB
         })
     } catch (error) {
-      console.error('Error obteniendo mensajes:', error)
+      console.error('Error getting messages:', error)
       return []
     }
   }
 
   /**
-   * Convierte mensajes del formato interno al formato requerido por OpenAI
+   * Converts messages from the internal format to the format required by OpenAI
    */
   static formatMessagesForOpenAI(messages: Message[], systemPrompt: string) {
     const formattedMessages = [
@@ -52,7 +52,7 @@ export class MessageService {
       }
     ]
 
-    // Agregar mensajes del historial
+    // Add messages from the history
     messages.forEach(msg => {
       if (msg.role === 'user' || msg.role === 'assistant') {
         formattedMessages.push({

@@ -13,7 +13,7 @@ export default function useChats() {
   const chats = useState<Chat[]>('chats', () => [])
   const emptyChat = ref<Chat | null>(null)
 
-  // Función para obtener chats de un agente específico
+  // Function to fetch chats for a specific agent
   async function _fetchAgentChats(agentId: string): Promise<Chat[]> {
     if (!userId.value) return []
 
@@ -29,12 +29,12 @@ export default function useChats() {
       )
 
       if (!response.success || !response.data) {
-        throw new Error(response.error || 'Error al cargar los chats')
+        throw new Error(response.error || 'Error loading chats')
       }
 
       return response.data.chats.map(chat => ({
         id: chat.id,
-        title: chat.title || `Chat con ${response.data?.agent?.name || 'Asistente'}`,
+        title: chat.title || `Chat with ${response.data?.agent?.name || 'Assistant'}`,
         agentId: agentId,
         userId: userId.value!,
         messageCount: chat.messageCount || 0,
@@ -44,13 +44,13 @@ export default function useChats() {
         isActive: true
       } as Chat))
     } catch (err) {
-      console.error('Error al cargar chats del agente:', err)
-      error.value = 'No se pudieron cargar los chats del agente'
+      console.error('Error fetching agent chats:', err)
+      error.value = 'Could not load agent chats'
       return []
     }
   }
 
-  // Función para cargar los chats de todos los agentes
+  // Function to load chats for all agents
   async function fetchChats(force = false) {
     if ((isLoading.value && !force) || !userId.value) return
 
@@ -58,35 +58,35 @@ export default function useChats() {
     error.value = null
 
     try {
-      // Si no hay categorías, intentar cargarlas
+      // If there are no categories, try to load them
       if (!categoriesWithAgents.value?.length) {
-        await categoriesWithAgents.value // Esperar a que se resuelva la promesa
+        await categoriesWithAgents.value // Wait for the promise to resolve
       }
 
-      // Obtener todos los agentes de las categorías
+      // Get all agents from the categories
       const allAgentIds = categoriesWithAgents.value.flatMap(cat =>
         cat.agents.map(agent => agent.id)
       )
 
-      // Usar un Set para evitar IDs duplicados
+      // Use a Set to avoid duplicate IDs
       const uniqueAgentIds = [...new Set(allAgentIds)]
 
-      // Obtener chats de cada agente en paralelo
+      // Fetch chats for each agent in parallel
       const allChats = await Promise.all(
         uniqueAgentIds.map(agentId => _fetchAgentChats(agentId))
       )
 
-      // Aplanar y actualizar el estado
+      // Flatten and update the state
       chats.value = allChats.flat()
     } catch (err) {
-      console.error('Error al cargar chats:', err)
-      error.value = 'Error al cargar los chats. Por favor, inténtalo de nuevo.'
+      console.error('Error loading chats:', err)
+      error.value = 'Error loading chats. Please try again.'
     } finally {
       isLoading.value = false
     }
   }
 
-  // Función para convertir Timestamp a Date si es necesario
+  // Function to convert Timestamp to Date if necessary
   const parseDate = (date: Date | { toDate: () => Date } | string | null | undefined): Date | null => {
     if (!date) return null
     if (date instanceof Date) return date
@@ -95,7 +95,7 @@ export default function useChats() {
     return null
   }
 
-  // Obtener mensajes recientes
+  // Fetch recent messages
   async function prefetchChatMessages() {
     if (!chats.value.length) return
 
@@ -122,7 +122,7 @@ export default function useChats() {
           )
 
           if (response.success && response.data) {
-            // Actualizar el chat con los mensajes
+            // Update the chat with messages
             const index = chats.value.findIndex(c => c.id === chat.id)
             if (index !== -1) {
               chats.value[index] = { ...chats.value[index], ...response.data }
@@ -135,11 +135,11 @@ export default function useChats() {
     )
   }
 
-  // Inicializar un chat vacío localmente
+  // Initialize an empty chat locally
   function initializeEmptyChat(agentId?: string): Chat {
     return {
       id: uuidv4(),
-      title: 'Nuevo chat',
+      title: 'New Chat',
       userId: session.value?.databaseUserId?.toString() || '',
       agentId: agentId || '',
       messageCount: 0,
@@ -151,16 +151,16 @@ export default function useChats() {
 
   async function createChat(agentId: string): Promise<Chat | null> {
     if (isCreating.value) {
-      //console.warn('Ya hay una solicitud de creación de chat en curso')
+      console.warn('A chat creation request is already in progress')
       return null
     }
 
     if (!agentId) {
-      //console.error('Se requiere un ID de agente para crear un chat')
+      console.error('An agent ID is required to create a chat')
       return null
     }
 
-    // Si no hay usuario autenticado, devolver un chat local
+    // If there is no authenticated user, return a local chat
     const { session } = useAuth()
     const userId = session.value?.databaseUserId
     if (!userId) {
@@ -185,10 +185,10 @@ export default function useChats() {
         emptyChat.value = null
         return response.data
       }
-      throw new Error(response.error || 'Error al crear el chat')
+      throw new Error(response.error || 'Error creating chat')
     } catch (error) {
       console.error('Error creating chat:', error)
-      // Si hay un error, devolver un chat local
+      // If there is an error, return a local chat
       const newChat = initializeEmptyChat(agentId)
       emptyChat.value = newChat
       return newChat
@@ -197,10 +197,10 @@ export default function useChats() {
     }
   }
 
-  // Actualizar un chat existente
+  // Update an existing chat
   async function updateChat(chatId: string, updates: Partial<Chat>) {
     try {
-      // Filtrar solo los campos definidos
+      // Filter only defined fields
       const filteredUpdates = Object.fromEntries(
         Object.entries(updates).filter(([_, value]) => value !== undefined)
       )
@@ -211,21 +211,21 @@ export default function useChats() {
       })
 
       if (response.success && response.data) {
-        // Actualizar el chat en la lista local
+        // Update the chat in the local list
         const index = chats.value.findIndex(c => c.id === chatId)
         if (index !== -1) {
           chats.value[index] = { ...chats.value[index], ...response.data }
         }
         return response.data
       }
-      throw new Error(response.error || 'Error al actualizar el chat')
+      throw new Error(response.error || 'Error updating chat')
     } catch (error) {
       console.error('Error updating chat:', error)
       throw error
     }
   }
 
-  // Eliminar un chat
+  // Delete a chat
   async function deleteChat(chatId: string) {
     try {
       const response = await fetch<ApiResponse<null>>(`/api/chats/${chatId}`, {
@@ -233,45 +233,45 @@ export default function useChats() {
       })
 
       if (response.success) {
-        // Eliminar el chat de la lista local
+        // Remove the chat from the local list
         chats.value = chats.value.filter(c => c.id !== chatId)
       } else {
-        throw new Error(response.error || 'Error al eliminar el chat')
+        throw new Error(response.error || 'Error deleting chat')
       }
     } catch (err) {
       console.error('Error deleting chat:', err)
-      error.value = 'No se pudo eliminar el chat. Por favor, inténtalo de nuevo.'
-      // No lanzar el error para no interrumpir la UI, el error se muestra en la variable 'error'
+      error.value = 'Could not delete chat. Please try again.'
+      // Do not throw the error to avoid interrupting the UI, the error is shown in the 'error' variable
     }
   }
 
-  // Crear y navegar a un nuevo chat
+  // Create and navigate to a new chat
   async function createChatAndNavigate(
     options: { agentId?: string } = {}
   ) {
-    // Usar el agente por defecto si no se proporciona uno
+    // Use the default agent if one is not provided
     const agentId = options.agentId || '50e79d2f-994e-4155-b2cd-c120c3da2c09'
 
     const chat = await createChat(agentId)
 
     if (!chat) {
-      console.error('No se pudo crear el chat')
+      console.error('Could not create chat')
       return
     }
 
-    // Navegar a la ruta correspondiente
+    // Navigate to the corresponding route
     const route = `/chats/${chat.id}`
 
     await navigateTo(route)
     return chat
   }
 
-  // Cargar chats cuando el componente se monte
+  // Load chats when the component is mounted
   onMounted(() => {
     fetchChats()
   })
 
-  // Si el userId cambia, recargar los chats
+  // If the userId changes, reload the chats
   watch(userId, (newUserId, oldUserId) => {
     if (newUserId && newUserId !== oldUserId) {
       fetchChats(true)

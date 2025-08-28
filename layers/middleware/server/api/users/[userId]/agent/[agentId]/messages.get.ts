@@ -29,41 +29,41 @@ export default defineEventHandler(async (event): Promise<ApiResponse<MessagesRes
         const agentId = getRouterParam(event, 'agentId')
         const query = getQuery(event)
 
-        // Validar parámetros requeridos
+        // Validate required parameters
         if (!userId) {
             throw createError({
                 statusCode: 400,
-                statusMessage: 'User ID es requerido'
+                statusMessage: 'User ID is required'
             })
         }
 
         if (!agentId) {
             throw createError({
                 statusCode: 400,
-                statusMessage: 'Agent ID es requerido'
+                statusMessage: 'Agent ID is required'
             })
         }
 
-        // Verificar que el usuario tiene acceso al agente
+        // Verify that the user has access to the agent
         const accessCheck = await checkUserAgentAccess(userId, agentId)
         if (!accessCheck.hasAccess) {
             throw createError({
                 statusCode: 403,
-                statusMessage: 'No tienes acceso a este agente',
+                statusMessage: 'You do not have access to this agent',
                 data: { reason: accessCheck.reason }
             })
         }
 
-        // Obtener información del agente
+        // Get agent information
         const agent = await getAgentById(agentId)
         if (!agent) {
             throw createError({
                 statusCode: 404,
-                statusMessage: 'Agente no encontrado'
+                statusMessage: 'Agent not found'
             })
         }
 
-        // Obtener parámetros de consulta
+        // Get query parameters
         const {
             page = 1,
             limit = 50,
@@ -71,7 +71,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<MessagesRes
             orderDirection = 'desc'
         } = query
 
-        // Obtener mensajes del usuario con el agente
+        // Get messages from the user with the agent
         const result = await getMessagesByUserAndAgent(userId, agentId, {
             page: Number(page),
             limit: Number(limit),
@@ -100,24 +100,24 @@ export default defineEventHandler(async (event): Promise<ApiResponse<MessagesRes
 
         return {
             success: true,
-            message: 'Mensajes obtenidos exitosamente',
+            message: 'Messages retrieved successfully',
             data: response
         }
 
     } catch (error: unknown) {
-        console.error('Error al obtener mensajes por usuario y agente:', error)
+        console.error('Error getting messages by user and agent:', error)
 
-        // Si es un error de H3, propagarlo
+        // If it is an H3 error, propagate it
         if (error && typeof error === 'object' && 'statusCode' in error) {
             throw error
         }
 
-        // Error genérico
+        // Generic error
         throw createError({
             statusCode: 500,
-            statusMessage: 'Error interno del servidor',
+            statusMessage: 'Internal Server Error',
             data: {
-                message: error instanceof Error ? error.message : 'Error desconocido'
+                message: error instanceof Error ? error.message : 'Unknown error'
             }
         })
     }

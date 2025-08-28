@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from 'uuid'
 import { createOrUpdateUserViaAPI } from '../../repository/userRepository'
 import type { GoogleUser } from '../../../shared/types/types'
-import { logger } from '../../../../middleware/server/utils/logger'
+import { logger } from '#layers/middleware/server/utils/logger'
 
-// Función para generar un ID de chat temporal
+// Function to generate a temporary chat ID
 function generateTempChatId(): string {
   return `${uuidv4()}`
 }
 
 async function getRedirectUrl(_userId: string): Promise<string> {
-  // Crear un ID de chat temporal
+  // Create a temporary chat ID
   const tempChatId = generateTempChatId()
-  // Redirigir al chat temporal
+  // Redirect to the temporary chat
   return `/chats/${tempChatId}`;
 }
 
@@ -34,10 +34,10 @@ export default defineOAuthGoogleEventHandler({
     }
 
     try {
-      // Usar el repository de la capa auth que llama a la API de la capa base
+      // Use the auth layer repository which calls the base layer API
       const dbUser = await createOrUpdateUserViaAPI(googleUser)
 
-      // Configurar la sesión del usuario
+      // Configure the user session
       const sessionData = {
         user: {
           id: user.id,
@@ -48,36 +48,36 @@ export default defineOAuthGoogleEventHandler({
         },
         databaseUserId: dbUser.id,
         loggedInAt: new Date().toISOString(),
-        // Añadimos el chat temporal a la sesión
+        // Add the temporary chat to the session
         tempChatId: generateTempChatId()
       }
       await setUserSession(event, sessionData)
 
-      // Establecer una cookie HTTP-Only segura con el ID de usuario
+      // Set a secure HTTP-Only cookie with the user ID
       setCookie(event, 'x-user-id', dbUser.id, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 1 semana
+        maxAge: 60 * 60 * 24 * 7, // 1 week
         path: '/',
       })
 
-      // Usar el ID del usuario de la base de datos para obtener/crear chats
+      // Use the user ID from the database to get/create chats
       const redirectUrl = await getRedirectUrl(dbUser.id)
       return sendRedirect(event, redirectUrl || '/')
     } catch (error) {
-      logger.error('Error al crear/actualizar usuario', error as Error, {
+      logger.error('Error creating/updating user', error as Error, {
         email: user.email,
         provider: 'google'
       })
       throw createError({
         statusCode: 500,
-        statusMessage: 'Error al procesar el usuario',
+        statusMessage: 'Error processing user',
       })
     }
   },
   onError(event, error) {
-    logger.error('Error en autenticación de Google', error as Error, {
+    logger.error('Error in Google authentication', error as Error, {
       path: event.path,
       method: event.method
     })

@@ -15,7 +15,7 @@ import type {
 
 const COLLECTION_NAME = 'messages'
 
-// Crear nuevo mensaje
+// Create a new message
 export async function createMessage(data: {
     chatId: string
     content: string
@@ -23,19 +23,19 @@ export async function createMessage(data: {
     userId: string
     metadata?: Record<string, unknown>
 }): Promise<Message> {
-    // Validar campos requeridos
+    // Validate required fields
     const validation = validateRequiredFields(data, ['chatId', 'content', 'role', 'userId'])
     if (!validation.isValid) {
-        throw new Error(`Campos requeridos faltantes: ${validation.missingFields.join(', ')}`)
+        throw new Error(`Missing required fields: ${validation.missingFields.join(', ')}`)
     }
 
-    // Verificar que el chat existe y pertenece al usuario
+    // Verify that the chat exists and belongs to the user
     const chat = await getChatByIdForUser(data.chatId, data.userId)
     if (!chat) {
-        throw new Error('Chat no encontrado o no tienes permisos para agregar mensajes')
+        throw new Error('Chat not found or you do not have permission to add messages')
     }
 
-    // Crear el mensaje
+    // Create the message
     const messageData = {
         chatId: data.chatId,
         content: data.content.trim(),
@@ -47,18 +47,18 @@ export async function createMessage(data: {
 
     const newMessage = await createDocument<Message>(COLLECTION_NAME, messageData)
 
-    // Actualizar actividad del chat
+    // Update chat activity
     await updateChatActivity(data.chatId, true)
 
     return newMessage
 }
 
-// Obtener mensaje por ID
+// Get message by ID
 export async function getMessageById(id: string): Promise<Message | null> {
     return await getDocumentById<Message>(COLLECTION_NAME, id)
 }
 
-// Obtener mensajes de un chat con paginación
+// Get messages from a chat with pagination
 export async function getMessagesByChat(
     chatId: string,
     userId: string,
@@ -69,10 +69,10 @@ export async function getMessagesByChat(
     hasNext: boolean
     hasPrev: boolean
 }> {
-    // Verificar que el usuario tiene acceso al chat
+    // Verify that the user has access to the chat
     const chat = await getChatByIdForUser(chatId, userId)
     if (!chat) {
-        throw new Error('Chat no encontrado o no tienes permisos para ver los mensajes')
+        throw new Error('Chat not found or you do not have permission to view the messages')
     }
 
     const { page = 1, limit = 50, orderBy = 'createdAt', orderDirection = 'asc' } = params
@@ -89,16 +89,16 @@ export async function getMessagesByChat(
     })
 }
 
-// Obtener mensajes recientes de un chat (sin paginación)
+// Get recent messages from a chat (no pagination)
 export async function getRecentMessagesByChat(
     chatId: string,
     userId: string,
     limit: number = 20
 ): Promise<Message[]> {
-    // Verificar que el usuario tiene acceso al chat
+    // Verify that the user has access to the chat
     const chat = await getChatByIdForUser(chatId, userId)
     if (!chat) {
-        throw new Error('Chat no encontrado o no tienes permisos para ver los mensajes')
+        throw new Error('Chat not found or you do not have permission to view the messages')
     }
 
     const querySnapshot = await firestoreClient
@@ -114,29 +114,29 @@ export async function getRecentMessagesByChat(
         ...doc.data()
     })) as Message[]
 
-    // Retornar en orden cronológico (más antiguo primero)
+    // Return in chronological order (oldest first)
     return messages.reverse()
 }
 
-// Actualizar mensaje
+// Update message
 export async function updateMessage(
     id: string,
     userId: string,
     data: Partial<Omit<Message, 'id' | 'createdAt' | 'updatedAt' | 'chatId' | 'userId' | 'role'>>
 ): Promise<Message | null> {
-    // Verificar que el mensaje existe
+    // Verify that the message exists
     const existingMessage = await getMessageById(id)
     if (!existingMessage) {
-        throw new Error('Mensaje no encontrado')
+        throw new Error('Message not found')
     }
 
-    // Verificar que el usuario tiene acceso al chat
+    // Verify that the user has access to the chat
     const chat = await getChatByIdForUser(existingMessage.chatId, userId)
     if (!chat) {
-        throw new Error('No tienes permisos para modificar este mensaje')
+        throw new Error('You do not have permission to modify this message')
     }
 
-    // Solo permitir actualizar contenido y metadata
+    // Only allow updating content and metadata
     const updateData: Partial<Message> = {}
 
     if (data.content !== undefined) {
@@ -149,24 +149,24 @@ export async function updateMessage(
     return await updateDocument<Message>(COLLECTION_NAME, id, updateData)
 }
 
-// Desactivar mensaje (soft delete)
+// Deactivate message (soft delete)
 export async function deactivateMessage(id: string, userId: string): Promise<void> {
-    // Verificar que el mensaje existe
+    // Verify that the message exists
     const existingMessage = await getMessageById(id)
     if (!existingMessage) {
-        throw new Error('Mensaje no encontrado')
+        throw new Error('Message not found')
     }
 
-    // Verificar que el usuario tiene acceso al chat
+    // Verify that the user has access to the chat
     const chat = await getChatByIdForUser(existingMessage.chatId, userId)
     if (!chat) {
-        throw new Error('No tienes permisos para eliminar este mensaje')
+        throw new Error('You do not have permission to delete this message')
     }
 
     await updateDocument<Message>(COLLECTION_NAME, id, { isActive: false })
 }
 
-// Buscar mensajes por contenido
+// Search messages by content
 export async function searchMessagesByContent(
     userId: string,
     searchTerm: string,
@@ -179,7 +179,7 @@ export async function searchMessagesByContent(
 }> {
     const { page = 1, limit = 20 } = params
 
-    // Obtener todos los chats del usuario
+    // Get all user chats
     const userChatsQuery = await firestoreClient
         .collection('chats')
         .where('userId', '==', userId)
@@ -200,25 +200,25 @@ export async function searchMessagesByContent(
         }
     }
 
-    // Buscar mensajes que contengan el término (limitado por Firestore)
+    // Search for messages containing the term (limited by Firestore)
     const searchTermLower = searchTerm.toLowerCase().trim()
 
-    // Firestore no tiene búsqueda full-text, esta es una implementación básica
+    // Firestore does not have full-text search, this is a basic implementation
     const messagesQuery = await firestoreClient
         .collection(COLLECTION_NAME)
-        .where('chatId', 'in', chatIds.slice(0, 10)) // Firestore limita 'in' a 10 elementos
+        .where('chatId', 'in', chatIds.slice(0, 10)) // Firestore limits 'in' to 10 elements
         .where('isActive', '==', true)
         .orderBy('createdAt', 'desc')
-        .limit(100) // Obtener más para filtrar localmente
+        .limit(100) // Get more to filter locally
         .get()
 
-    // Filtrar mensajes que contengan el término de búsqueda
+    // Filter messages containing the search term
     const allResults = messagesQuery.docs
         .map(doc => ({ id: doc.id, ...doc.data() }) as Message)
         .filter(message => message.content.toLowerCase().includes(searchTermLower))
         .map(message => ({ ...message, chatTitle: chatTitles.get(message.chatId) }));
 
-    // Aplicar paginación manual
+    // Apply manual pagination
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const documents = allResults.slice(startIndex, endIndex)
@@ -231,14 +231,14 @@ export async function searchMessagesByContent(
     }
 }
 
-// Obtener estadísticas de mensajes de usuario
+// Get user message statistics
 export async function getUserMessageStats(userId: string): Promise<{
     totalMessages: number
     messagesThisWeek: number
     messagesThisMonth: number
     averageMessagesPerChat: number
 }> {
-    // Obtener todos los chats del usuario
+    // Get all user chats
     const userChatsQuery = await firestoreClient
         .collection('chats')
         .where('userId', '==', userId)
@@ -256,7 +256,7 @@ export async function getUserMessageStats(userId: string): Promise<{
         }
     }
 
-    // Obtener mensajes (en lotes debido a limitación de Firestore)
+    // Get messages (in batches due to Firestore limitation)
     let allMessages: Message[] = []
 
     for (let i = 0; i < chatIds.length; i += 10) {
@@ -275,7 +275,7 @@ export async function getUserMessageStats(userId: string): Promise<{
         allMessages = allMessages.concat(batchMessages)
     }
 
-    // Calcular estadísticas
+    // Calculate statistics
     const totalMessages = allMessages.length
 
     const now = new Date()
@@ -310,7 +310,7 @@ export async function getUserMessageStats(userId: string): Promise<{
     }
 }
 
-// Obtener mensajes por usuario y agente
+// Get messages by user and agent
 export async function getMessagesByUserAndAgent(
     userId: string,
     agentId: string,
@@ -324,7 +324,7 @@ export async function getMessagesByUserAndAgent(
 }> {
     const { page = 1, limit = 50, orderBy = 'createdAt', orderDirection = 'desc' } = params
 
-    // Obtener todos los chats del usuario con el agente específico
+    // Get all user chats with the specific agent
     const userChatsQuery = await firestoreClient
         .collection('chats')
         .where('userId', '==', userId)
@@ -351,7 +351,7 @@ export async function getMessagesByUserAndAgent(
         }
     }
 
-    // Obtener mensajes de todos los chats con paginación
+    // Get messages from all chats with pagination
     const allMessages: Message[] = []
 
     for (let i = 0; i < chatIds.length; i += 10) {
@@ -371,7 +371,7 @@ export async function getMessagesByUserAndAgent(
         allMessages.push(...batchMessages)
     }
 
-    // Ordenar todos los mensajes
+    // Sort all messages
     allMessages.sort((a, b) => {
         const aValue = orderBy === 'createdAt' ? a.createdAt : a[orderBy as keyof Message]
         const bValue = orderBy === 'createdAt' ? b.createdAt : b[orderBy as keyof Message]
@@ -389,7 +389,7 @@ export async function getMessagesByUserAndAgent(
         }
     })
 
-    // Aplicar paginación
+    // Apply pagination
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const documents = allMessages.slice(startIndex, endIndex)

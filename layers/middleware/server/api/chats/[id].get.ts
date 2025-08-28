@@ -6,45 +6,45 @@ export default defineEventHandler(async (event): Promise<ApiResponse<ChatWithMes
         const chatId = getRouterParam(event, 'id')
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
         if (!chatId) {
             return {
                 success: false,
-                message: 'ID de chat requerido',
-                error: 'No se proporcionó el ID del chat'
+                message: 'Chat ID required',
+                error: 'Chat ID was not provided'
             }
         }
 
-        // Obtener el chat con mensajes
+        // Get the chat with messages
         const chatWithMessages = await getChatWithMessages(chatId, userId)
 
         if (!chatWithMessages) {
             return {
                 success: false,
-                message: 'Chat no encontrado',
-                error: 'No existe un chat con el ID proporcionado o no tienes permisos para verlo'
+                message: 'Chat not found',
+                error: 'A chat with the provided ID does not exist or you do not have permission to view it'
             }
         }
 
         return {
             success: true,
-            message: 'Chat obtenido exitosamente',
+            message: 'Chat retrieved successfully',
             data: chatWithMessages
         }
     } catch (error) {
-        console.error('Error al obtener chat:', error)
+        console.error('Error getting chat:', error)
         return {
             success: false,
-            message: 'Error al obtener el chat',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error getting chat',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

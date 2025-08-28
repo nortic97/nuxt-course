@@ -9,30 +9,30 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
     if (!categoryId) {
       return {
         success: false,
-        message: 'ID de la categoría requerido',
-        error: 'No se proporcionó el ID de la categoría'
+        message: 'Category ID required',
+        error: 'Category ID was not provided'
       }
     }
 
-    // Validar que se envió el body
+    // Validate that the body was sent
     if (!body) {
       return {
         success: false,
-        message: 'Datos requeridos',
-        error: 'No se enviaron datos en el cuerpo de la petición'
+        message: 'Data required',
+        error: 'No data was sent in the request body'
       }
     }
 
-    // Validar nombre si se está actualizando
+    // Validate name if it is being updated
     if (body.name !== undefined && (!body.name || !body.name.trim())) {
       return {
         success: false,
-        message: 'Nombre inválido',
-        error: 'El nombre no puede estar vacío'
+        message: 'Invalid name',
+        error: 'The name cannot be empty'
       }
     }
 
-    // Limpiar y validar datos
+    // Sanitize and validate data
     const updateData: UpdateAgentCategoryRequest = {}
 
     if (body.name !== undefined) {
@@ -45,39 +45,39 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
       updateData.isActive = Boolean(body.isActive)
     }
 
-    // Actualizar la categoría
+    // Update the category
     const updatedCategory = await updateAgentCategory(categoryId, updateData)
 
     if (!updatedCategory) {
       return {
         success: false,
-        message: 'Error al actualizar',
-        error: 'No se pudo actualizar la categoría'
+        message: 'Error updating',
+        error: 'Could not update the category'
       }
     }
 
     return {
       success: true,
-      message: 'Categoría actualizada exitosamente',
+      message: 'Category updated successfully',
       data: updatedCategory
     }
   } catch (error) {
-    console.error('Error al actualizar categoría:', error)
+    console.error('Error updating category:', error)
 
-    // Manejar errores específicos
+    // Handle specific errors
     if (error instanceof Error) {
-      if (error.message.includes('Categoría no encontrada')) {
+      if (error.message.includes('Category not found')) {
         return {
           success: false,
-          message: 'Categoría no encontrada',
+          message: 'Category not found',
           error: error.message
         }
       }
 
-      if (error.message.includes('Ya existe una categoría')) {
+      if (error.message.includes('A category with this name already exists')) {
         return {
           success: false,
-          message: 'Categoría duplicada',
+          message: 'Duplicate category',
           error: error.message
         }
       }
@@ -85,8 +85,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<AgentCatego
 
     return {
       success: false,
-      message: 'Error al actualizar la categoría',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      message: 'Error updating category',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 })

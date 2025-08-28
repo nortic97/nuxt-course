@@ -8,36 +8,36 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
     if (!agentId) {
       return {
         success: false,
-        message: 'ID del agente requerido',
-        error: 'No se proporcionó el ID del agente'
+        message: 'Agent ID required',
+        error: 'Agent ID not provided'
       }
     }
 
-    // Eliminar el agente (soft delete)
+    // Delete the agent (soft delete)
     await deleteAgent(agentId)
 
     return {
       success: true,
-      message: 'Agente eliminado exitosamente',
+      message: 'Agent deleted successfully',
       data: null
     }
   } catch (error) {
-    console.error('Error al eliminar agente:', error)
+    console.error('Error deleting agent:', error)
 
-    // Manejar errores específicos
+    // Handle specific errors
     if (error instanceof Error) {
-      if (error.message.includes('Agente no encontrado')) {
+      if (error.message.includes('Agent not found')) {
         return {
           success: false,
-          message: 'Agente no encontrado',
+          message: 'Agent not found',
           error: error.message
         }
       }
 
-      if (error.message.includes('tiene chats activos')) {
+      if (error.message.includes('has active chats')) {
         return {
           success: false,
-          message: 'No se puede eliminar',
+          message: 'Cannot delete',
           error: error.message
         }
       }
@@ -45,8 +45,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
 
     return {
       success: false,
-      message: 'Error al eliminar el agente',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      message: 'Error deleting agent',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 })

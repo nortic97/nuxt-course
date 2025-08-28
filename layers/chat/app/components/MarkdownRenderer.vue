@@ -30,12 +30,12 @@ const renderedMarkdown = computed(() => {
 
 <style>
 .markdown-content pre {
-  background-color: #282c34; /* Fondo oscuro compatible con atom-one-dark */
-  color: #abb2bf; /* Color de texto base para el tema oscuro */
+  background-color: #282c34; /* Dark background compatible with atom-one-dark */
+  color: #abb2bf; /* Base text color for the dark theme */
   padding: 1rem;
   border-radius: 0.5rem;
-  overflow-x: auto; /* Scroll horizontal si el código es muy largo */
-  border: 1px solid #3a4048; /* Borde sutil para el tema oscuro */
+  overflow-x: auto; /* Horizontal scroll for long code lines */
+  border: 1px solid #3a4048; /* Subtle border for the dark theme */
 }
 
 .markdown-content code {

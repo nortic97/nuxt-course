@@ -16,9 +16,9 @@ export const createOpenAIModel = (apiKey: string, model: string = 'gpt-4o-mini')
 }
 
 /**
- * Factory dinámico para crear modelos de AI según el proveedor
+ * Dynamic factory to create AI models based on the provider
  */
-// Función para crear modelo Groq (IA gratuita en la nube)
+// Function to create Groq model (free AI in the cloud)
 export const createGroqModel = (apiKey: string, model: string = 'llama3-8b-8192') => {
   const groq = createOpenAI({
     apiKey,
@@ -31,13 +31,13 @@ export const createAIModel = (provider: string, model: string, apiKey?: string) 
   switch (provider.toLowerCase()) {
     case 'openai':
       if (!apiKey) {
-        throw new Error('OpenAI requiere API key')
+        throw new Error('OpenAI requires API key')
       }
       return createOpenAIModel(apiKey, model)
     
     case 'groq':
       if (!apiKey) {
-        throw new Error('Groq requiere API key')
+        throw new Error('Groq requires API key')
       }
       return createGroqModel(apiKey, model)
     
@@ -45,13 +45,13 @@ export const createAIModel = (provider: string, model: string, apiKey?: string) 
       return createOllamaModel()
     
     default:
-      console.warn(`Proveedor desconocido: ${provider}, usando Ollama por defecto`)
+      console.warn(`Unknown provider: ${provider}, using Ollama by default`)
       return createOllamaModel()
   }
 }
 
 /**
- * Detecta el proveedor basado en el modelo
+ * Detects the provider based on the model
  */
 export const detectProvider = (model: string): string => {
   if (model.startsWith('gpt-') || model.includes('openai')) {
@@ -63,7 +63,7 @@ export const detectProvider = (model: string): string => {
   if (model.includes('llama') || model.includes('mistral') || model.includes('codellama')) {
     return 'ollama'
   }
-  // Por defecto usar Ollama (gratuito)
+  // Use Ollama by default (free)
   return 'ollama'
 }
 

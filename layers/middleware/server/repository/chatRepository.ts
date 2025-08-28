@@ -19,38 +19,38 @@ import type {
 
 const COLLECTION_NAME = 'chats'
 
-// Crear nuevo chat
+// Create a new chat
 export async function createChat(data: {
     id?: string
     title?: string
     userId: string
     agentId: string
 }): Promise<Chat> {
-    // Validar campos requeridos
+    // Validate required fields
     const validation = validateRequiredFields(data, ['userId', 'agentId'])
     if (!validation.isValid) {
-        throw new Error(`Campos requeridos faltantes: ${validation.missingFields.join(', ')}`)
+        throw new Error(`Missing required fields: ${validation.missingFields.join(', ')}`)
     }
 
-    // Verificar que el usuario existe y está activo
+    // Check that the user exists and is active
     const user = await getUserById(data.userId)
     if (!user || !user.isActive) {
-        throw new Error('El usuario especificado no existe o no está activo')
+        throw new Error('The specified user does not exist or is not active')
     }
 
-    // Verificar que el usuario tiene acceso al agente
+    // Check that the user has access to the agent
     const accessCheck = await checkUserAgentAccess(data.userId, data.agentId)
     if (!accessCheck.hasAccess) {
-        throw new Error(`No tiene acceso a este agente: ${accessCheck.reason}`)
+        throw new Error(`You do not have access to this agent: ${accessCheck.reason}`)
     }
 
-    // Generar un ID de chat si no se proporciona uno
+    // Generate a chat ID if one is not provided
     const chatId = data.id || uuidv4()
 
-    // Crear el chat
+    // Create the chat
     const chatData: any = {
         id: chatId,
-        title: data.title?.trim() || 'Nuevo Chat',
+        title: data.title?.trim() || 'New Chat',
         userId: data.userId,
         agentId: data.agentId,
         isActive: true,
@@ -61,12 +61,12 @@ export async function createChat(data: {
     return await createDocument<Chat>(COLLECTION_NAME, chatData, chatId)
 }
 
-// Obtener chat por ID
+// Get chat by ID
 export async function getChatById(id: string): Promise<Chat | null> {
     return await getDocumentById<Chat>(COLLECTION_NAME, id)
 }
 
-// Obtener chat por ID para un usuario específico
+// Get chat by ID for a specific user
 export async function getChatByIdForUser(
     id: string,
     userId: string
@@ -80,7 +80,7 @@ export async function getChatByIdForUser(
     return chat
 }
 
-// Obtener chat con mensajes
+// Get chat with messages
 export async function getChatWithMessages(
     id: string,
     userId?: string
@@ -93,7 +93,7 @@ export async function getChatWithMessages(
         return null
     }
 
-    // Obtener mensajes del chat
+    // Get messages from the chat
     const messagesQuery = await firestoreClient
         .collection('messages')
         .where('chatId', '==', id)
@@ -112,7 +112,7 @@ export async function getChatWithMessages(
     }
 }
 
-// Obtener todos los chats de un usuario con paginación
+// Get all chats of a user with pagination
 export async function getChatsByUser(
     userId: string,
     params: PaginationParams = {}
@@ -136,36 +136,36 @@ export async function getChatsByUser(
     })
 }
 
-// Actualizar chat
+// Update chat
 export async function updateChat(
     id: string,
     userId: string,
     data: Partial<Omit<Chat, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'agentId'>>
 ): Promise<Chat | null> {
-    // Verificar que el chat existe y pertenece al usuario
+    // Check that the chat exists and belongs to the user
     const existingChat = await getChatByIdForUser(id, userId)
     if (!existingChat) {
-        throw new Error('Chat no encontrado o no tienes permisos para modificarlo')
+        throw new Error('Chat not found or you do not have permission to modify it')
     }
 
-    // Preparar datos de actualización
+    // Prepare update data
     const updateData: Partial<Chat> = {}
 
     if (data.title !== undefined) {
-        updateData.title = data.title.trim() || 'Chat sin título'
+        updateData.title = data.title.trim() || 'Untitled Chat'
     }
 
     return await updateDocument<Chat>(COLLECTION_NAME, id, updateData)
 }
 
-// Actualizar contador de mensajes y última actividad
+// Update message count and last activity
 export async function updateChatActivity(
     chatId: string,
     incrementMessageCount: boolean = true
 ): Promise<void> {
     const chat = await getChatById(chatId)
     if (!chat) {
-        throw new Error('Chat no encontrado')
+        throw new Error('Chat not found')
     }
 
     const updateData: Partial<Chat> = {
@@ -179,18 +179,18 @@ export async function updateChatActivity(
     await updateDocument<Chat>(COLLECTION_NAME, chatId, updateData)
 }
 
-// Desactivar chat (soft delete)
+// Deactivate chat (soft delete)
 export async function deactivateChat(id: string, userId: string): Promise<void> {
-    // Verificar que el chat existe y pertenece al usuario
+    // Check that the chat exists and belongs to the user
     const existingChat = await getChatByIdForUser(id, userId)
     if (!existingChat) {
-        throw new Error('Chat no encontrado o no tienes permisos para eliminarlo')
+        throw new Error('Chat not found or you do not have permission to delete it')
     }
 
     await updateDocument<Chat>(COLLECTION_NAME, id, { isActive: false })
 }
 
-// Buscar chats por título
+// Search chats by title
 export async function searchChatsByTitle(
     userId: string,
     searchTerm: string,
@@ -203,7 +203,7 @@ export async function searchChatsByTitle(
 }> {
     const { page = 1, limit = 10 } = params
 
-    // Firestore no tiene búsqueda full-text nativa, usamos prefix search
+    // Firestore does not have native full-text search, we use prefix search
     const searchTermLower = searchTerm.toLowerCase().trim()
 
     const querySnapshot = await firestoreClient
@@ -221,7 +221,7 @@ export async function searchChatsByTitle(
         ...doc.data()
     })) as Chat[]
 
-    // Aplicar paginación manual
+    // Apply manual pagination
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const documents = allResults.slice(startIndex, endIndex)
@@ -234,7 +234,7 @@ export async function searchChatsByTitle(
     }
 }
 
-// Obtener estadísticas de chats de usuario
+// Get user chat statistics
 export async function getUserChatStats(userId: string): Promise<{
     totalChats: number
     totalMessages: number
@@ -249,11 +249,11 @@ export async function getUserChatStats(userId: string): Promise<{
 
     const chats = chatsQuery.docs.map(doc => doc.data()) as Chat[]
 
-    // Calcular estadísticas
+    // Calculate statistics
     const totalChats = chats.length
     const totalMessages = chats.reduce((sum, chat) => sum + (chat.messageCount || 0), 0)
 
-    // Chats de este mes
+    // Chats this month
     const thisMonth = new Date()
     thisMonth.setDate(1)
     thisMonth.setHours(0, 0, 0, 0)
@@ -267,7 +267,7 @@ export async function getUserChatStats(userId: string): Promise<{
         return createdAtDate && createdAtDate >= thisMonth
     }).length
 
-    // Agente más usado
+    // Most used agent
     const agentCounts: Record<string, number> = {}
     chats.forEach(chat => {
         agentCounts[chat.agentId] = (agentCounts[chat.agentId] || 0) + 1

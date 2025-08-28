@@ -13,7 +13,7 @@ import type {
 
 const COLLECTION_NAME = 'users'
 
-// Crear o actualizar usuario (para auth)
+// Create or update user (for auth)
 export interface CreateUserInput {
     id?: string
     email: string
@@ -23,13 +23,13 @@ export interface CreateUserInput {
 }
 
 export async function createOrUpdateUser(userData: CreateUserInput): Promise<User> {
-    // Validar campos requeridos
+    // Validate required fields
     const validation = validateRequiredFields(userData as unknown as Record<string, unknown>, ['email'])
     if (!validation.isValid) {
-        throw new Error(`Campos requeridos faltantes: ${validation.missingFields.join(', ')}`)
+        throw new Error(`Missing required fields: ${validation.missingFields.join(', ')}`)
     }
 
-    // Buscar usuario existente por email
+    // Search for existing user by email
     const existingUserQuery = await firestoreClient
         .collection(COLLECTION_NAME)
         .where('email', '==', userData.email)
@@ -37,15 +37,15 @@ export async function createOrUpdateUser(userData: CreateUserInput): Promise<Use
         .get()
 
     if (!existingUserQuery.empty) {
-        // Usuario existe, actualizar datos si es necesario
+        // User exists, update data if necessary
         const existingDoc = existingUserQuery.docs[0]
         if (!existingDoc) {
-            throw new Error('Error al obtener documento de usuario existente')
+            throw new Error('Error getting existing user document')
         }
 
         const existingUser = existingDoc.data() as User
 
-        // Actualizar solo si hay cambios
+        // Update only if there are changes
         const updateData: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'email'>> = {}
         if (userData.name && userData.name !== existingUser.name) {
             updateData.name = userData.name
@@ -68,7 +68,7 @@ export async function createOrUpdateUser(userData: CreateUserInput): Promise<Use
         }
     }
 
-    // Crear nuevo usuario
+    // Create new user
     const userId = userData.id || generateId()
     const timestamps = {
         createdAt: new Date(),
@@ -92,12 +92,12 @@ export async function createOrUpdateUser(userData: CreateUserInput): Promise<Use
     return createDocument<User>(COLLECTION_NAME, newUser, userId)
 }
 
-// Obtener usuario por ID
+// Get user by ID
 export async function getUserById(id: string): Promise<User | null> {
     return getDocumentById<User>(COLLECTION_NAME, id)
 }
 
-// Obtener usuario por email
+// Get user by email
 export async function getUserByEmail(email: string): Promise<User | null> {
     const querySnapshot = await firestoreClient
         .collection(COLLECTION_NAME)
@@ -117,7 +117,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     } as User
 }
 
-// Obtener todos los usuarios con paginación
+// Get all users with pagination
 export async function getAllUsers(params: PaginationParams = {}) {
     const { page = 1, limit = 10, orderBy = 'createdAt', orderDirection = 'desc' } = params
 
@@ -132,37 +132,37 @@ export async function getAllUsers(params: PaginationParams = {}) {
     })
 }
 
-// Actualizar usuario
+// Update user
 export async function updateUser(
     id: string,
     data: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'email'>>
 ): Promise<User | null> {
-    // Verificar que el usuario existe
+    // Check that the user exists
     const existingUser = await getUserById(id)
     if (!existingUser) {
-        throw new Error('Usuario no encontrado')
+        throw new Error('User not found')
     }
 
     return await updateDocument<User>(COLLECTION_NAME, id, data)
 }
 
-// Desactivar usuario (soft delete)
+// Deactivate user (soft delete)
 export async function deactivateUser(id: string): Promise<void> {
     const existingUser = await getUserById(id)
     if (!existingUser) {
-        throw new Error('Usuario no encontrado')
+        throw new Error('User not found')
     }
 
     await updateDocument<User>(COLLECTION_NAME, id, { isActive: false })
 }
 
-// Verificar si un usuario existe y está activo
+// Check if a user exists and is active
 export async function isUserActive(id: string): Promise<boolean> {
     const user = await getUserById(id)
     return user?.isActive === true
 }
 
-// Obtener estadísticas de usuario (para dashboard)
+// Get user statistics (for dashboard)
 export async function getUserStats(userId: string): Promise<{
     totalChats: number
     totalAgents: number
@@ -170,17 +170,17 @@ export async function getUserStats(userId: string): Promise<{
 }> {
     const user = await getUserById(userId)
     if (!user) {
-        throw new Error('Usuario no encontrado')
+        throw new Error('User not found')
     }
 
-    // Contar chats activos
+    // Count active chats
     const chatsQuery = await firestoreClient
         .collection('chats')
         .where('userId', '==', userId)
         .where('isActive', '==', true)
         .get()
 
-    // Contar agentes disponibles
+    // Count available agents
     const userAgentsQuery = await firestoreClient
         .collection('userAgents')
         .where('userId', '==', userId)

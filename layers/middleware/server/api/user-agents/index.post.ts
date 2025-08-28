@@ -5,25 +5,25 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UserAgent>>
     try {
         const body = await readBody(event)
 
-        // Validar que se envió el body
+        // Validate that the body was sent
         if (!body) {
             return {
                 success: false,
-                message: 'Datos requeridos',
-                error: 'No se enviaron datos en el cuerpo de la petición'
+                message: 'Data required',
+                error: 'No data sent in the request body'
             }
         }
 
-        // Validar campos requeridos
+        // Validate required fields
         if (!body.userId || !body.agentId) {
             return {
                 success: false,
-                message: 'Datos requeridos faltantes',
-                error: 'userId y agentId son obligatorios'
+                message: 'Missing required data',
+                error: 'userId and agentId are mandatory'
             }
         }
 
-        // Preparar datos
+        // Prepare data
         const userAgentData = {
             userId: body.userId.trim(),
             agentId: body.agentId.trim(),
@@ -31,48 +31,48 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UserAgent>>
             expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined
         }
 
-        // Validar fecha de expiración si se proporciona
+        // Validate expiration date if provided
         if (userAgentData.expiresAt && userAgentData.expiresAt <= new Date()) {
             return {
                 success: false,
-                message: 'Fecha de expiración inválida',
-                error: 'La fecha de expiración debe ser futura'
+                message: 'Invalid expiration date',
+                error: 'The expiration date must be in the future'
             }
         }
 
-        // Crear el acceso
+        // Create the access
         const newUserAgent = await createUserAgent(userAgentData)
 
         return {
             success: true,
-            message: 'Acceso al agente creado exitosamente',
+            message: 'Agent access created successfully',
             data: newUserAgent
         }
     } catch (error) {
-        console.error('Error al crear acceso:', error)
+        console.error('Error creating access:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('ya tiene acceso activo')) {
+            if (error.message.includes('already has active access')) {
                 return {
                     success: false,
-                    message: 'Acceso duplicado',
+                    message: 'Duplicate access',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('no existe o no está activo')) {
+            if (error.message.includes('does not exist or is not active')) {
                 return {
                     success: false,
-                    message: 'Usuario o agente inválido',
+                    message: 'Invalid user or agent',
                     error: error.message
                 }
             }
 
-            if (error.message.includes('Campos requeridos faltantes')) {
+            if (error.message.includes('Missing required fields')) {
                 return {
                     success: false,
-                    message: 'Datos incompletos',
+                    message: 'Incomplete data',
                     error: error.message
                 }
             }
@@ -80,8 +80,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UserAgent>>
 
         return {
             success: false,
-            message: 'Error al crear el acceso al agente',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error creating agent access',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

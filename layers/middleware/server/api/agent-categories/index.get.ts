@@ -12,17 +12,17 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
             search
         } = query
 
-        // Si hay término de búsqueda, usar búsqueda
+        // If there is a search term, use search
         if (search && typeof search === 'string') {
             const categories = await searchAgentCategories(search)
             return {
                 success: true,
-                message: 'Categorías encontradas',
+                message: 'Categories found',
                 data: categories
             }
         }
 
-        // Obtener categorías con paginación
+        // Get categories with pagination
         const result = await getAllAgentCategories({
             page: Number(page),
             limit: Number(limit),
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
 
         return {
             success: true,
-            message: 'Categorías obtenidas exitosamente',
+            message: 'Categories retrieved successfully',
             data: result.documents,
             pagination: {
                 page: Number(page),
@@ -43,11 +43,11 @@ export default defineEventHandler(async (event): Promise<PaginatedResponse<Agent
             }
         }
     } catch (error) {
-        console.error('Error al obtener categorías:', error)
+        console.error('Error getting categories:', error)
         return {
             success: false,
-            message: 'Error al obtener las categorías',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error getting categories',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

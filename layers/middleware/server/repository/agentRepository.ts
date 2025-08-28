@@ -21,7 +21,7 @@ import type {
 
 const COLLECTION_NAME = 'agents'
 
-// Obtener todos los agentes con paginación y filtros
+// Get all agents with pagination and filters
 export async function getAllAgents(params: AgentQueryParams = {}): Promise<{
     documents: AgentWithCategory[]
     total: number
@@ -46,7 +46,7 @@ export async function getAllAgents(params: AgentQueryParams = {}): Promise<{
         value: unknown
     }> = []
 
-    // Filtros
+    // Filters
     if (categoryId) {
         whereConditions.push({ field: 'categoryId', operator: '==', value: categoryId })
     }
@@ -60,18 +60,18 @@ export async function getAllAgents(params: AgentQueryParams = {}): Promise<{
         whereConditions.push({ field: 'price', operator: '<=', value: maxPrice })
     }
 
-    // Si hay búsqueda, usar función de búsqueda
+    // If there is a search term, use the search function
     if (search && typeof search === 'string') {
         const searchResult = await searchAgents(search, { categoryId, isActive, minPrice, maxPrice })
-        // Para mantener consistencia con la paginación, agregamos hasNext y hasPrev
+        // To maintain consistency with pagination, we add hasNext and hasPrev
         return {
             ...searchResult,
-            hasNext: false, // La búsqueda no maneja paginación
+            hasNext: false, // Search does not handle pagination
             hasPrev: false
         }
     }
 
-    // Obtener agentes con paginación
+    // Get paginated agents
     const result = await getPaginatedDocuments<Agent>(COLLECTION_NAME, {
         page,
         limit,
@@ -80,7 +80,7 @@ export async function getAllAgents(params: AgentQueryParams = {}): Promise<{
         where: whereConditions
     })
 
-    // Poblar categorías para cada agente
+    // Populate categories for each agent
     const agentsWithCategories: AgentWithCategory[] = []
 
     for (const agent of result.documents) {
@@ -101,12 +101,12 @@ export async function getAllAgents(params: AgentQueryParams = {}): Promise<{
     }
 }
 
-// Obtener agente por ID con categoría
+// Get agent by ID with category
 export async function getAgentById(id: string): Promise<AgentWithCategory | null> {
     const agent = await getDocumentById<Agent>(COLLECTION_NAME, id)
     if (!agent) return null
 
-    // Obtener la categoría
+    // Get the category
     const category = await getDocumentById<AgentCategory>('agentCategories', agent.categoryId)
     if (!category) return null
 
@@ -116,26 +116,26 @@ export async function getAgentById(id: string): Promise<AgentWithCategory | null
     }
 }
 
-// Crear nuevo agente
+// Create a new agent
 export async function createAgent(data: CreateAgentRequest): Promise<AgentWithCategory> {
-    // Validar campos requeridos
+    // Validate required fields
     const validation = validateRequiredFields(data, ['name', 'price', 'categoryId'])
     if (!validation.isValid) {
-        throw new Error(`Campos requeridos faltantes: ${validation.missingFields.join(', ')}`)
+        throw new Error(`Missing required fields: ${validation.missingFields.join(', ')}`)
     }
 
-    // Validar que el precio sea válido
+    // Validate that the price is valid
     if (data.price < 0) {
-        throw new Error('El precio no puede ser negativo')
+        throw new Error('Price cannot be negative')
     }
 
-    // Verificar que la categoría existe y está activa
+    // Check if the category exists and is active
     const categoryExists = await isAgentCategoryActive(data.categoryId)
     if (!categoryExists) {
-        throw new Error('La categoría especificada no existe o no está activa')
+        throw new Error('The specified category does not exist or is not active')
     }
 
-    // Verificar que no exista otro agente con el mismo nombre en la misma categoría
+    // Check that another agent with the same name does not exist in the same category
     const existingAgents = await firestoreClient
         .collection(COLLECTION_NAME)
         .where('name', '==', data.name)
@@ -144,10 +144,10 @@ export async function createAgent(data: CreateAgentRequest): Promise<AgentWithCa
         .get()
 
     if (!existingAgents.empty) {
-        throw new Error('Ya existe un agente con ese nombre en esta categoría')
+        throw new Error('An agent with that name already exists in this category')
     }
 
-    // Crear el agente
+    // Create the agent
     const agentData = {
         ...data,
         isActive: true
@@ -155,7 +155,7 @@ export async function createAgent(data: CreateAgentRequest): Promise<AgentWithCa
 
     const newAgent = await createDocument<Agent>(COLLECTION_NAME, agentData)
 
-    // Obtener la categoría para retornar el agente completo
+    // Get the category to return the complete agent
     const category = await getDocumentById<AgentCategory>('agentCategories', newAgent.categoryId)
 
     return {
@@ -164,31 +164,31 @@ export async function createAgent(data: CreateAgentRequest): Promise<AgentWithCa
     }
 }
 
-// Actualizar agente
+// Update an agent
 export async function updateAgent(
     id: string,
     data: UpdateAgentRequest
 ): Promise<AgentWithCategory | null> {
-    // Verificar que el agente existe
+    // Check if the agent exists
     const existingAgent = await getDocumentById<Agent>(COLLECTION_NAME, id)
     if (!existingAgent) {
-        throw new Error('Agente no encontrado')
+        throw new Error('Agent not found')
     }
 
-    // Validar precio si se está actualizando
+    // Validate price if it is being updated
     if (data.price !== undefined && data.price < 0) {
-        throw new Error('El precio no puede ser negativo')
+        throw new Error('Price cannot be negative')
     }
 
-    // Verificar categoría si se está actualizando
+    // Check category if it is being updated
     if (data.categoryId && data.categoryId !== existingAgent.categoryId) {
         const categoryExists = await isAgentCategoryActive(data.categoryId)
         if (!categoryExists) {
-            throw new Error('La categoría especificada no existe o no está activa')
+            throw new Error('The specified category does not exist or is not active')
         }
     }
 
-    // Verificar nombre único en categoría si se está actualizando
+    // Check for unique name in category if it is being updated
     if (data.name && data.name !== existingAgent.name) {
         const categoryId = data.categoryId || existingAgent.categoryId
         const existingAgents = await firestoreClient
@@ -201,7 +201,7 @@ export async function updateAgent(
         if (!existingAgents.empty) {
             const duplicateAgent = existingAgents.docs[0]
             if (duplicateAgent && duplicateAgent.id !== id) {
-                throw new Error('Ya existe un agente con ese nombre en esta categoría')
+                throw new Error('An agent with that name already exists in this category')
             }
         }
     }
@@ -209,7 +209,7 @@ export async function updateAgent(
     const updatedAgent = await updateDocument<Agent>(COLLECTION_NAME, id, data)
     if (!updatedAgent) return null
 
-    // Obtener la categoría
+    // Get the category
     const category = await getDocumentById<AgentCategory>('agentCategories', updatedAgent.categoryId)
 
     return {
@@ -218,15 +218,15 @@ export async function updateAgent(
     }
 }
 
-// Eliminar agente (soft delete)
+// Delete an agent (soft delete)
 export async function deleteAgent(id: string): Promise<void> {
-    // Verificar que el agente existe
+    // Check if the agent exists
     const existingAgent = await getDocumentById<Agent>(COLLECTION_NAME, id)
     if (!existingAgent) {
-        throw new Error('Agente no encontrado')
+        throw new Error('Agent not found')
     }
 
-    // Verificar que no tenga chats activos
+    // Check that it does not have active chats
     const activeChats = await firestoreClient
         .collection('chats')
         .where('agentId', '==', id)
@@ -234,13 +234,13 @@ export async function deleteAgent(id: string): Promise<void> {
         .get()
 
     if (!activeChats.empty) {
-        throw new Error('No se puede eliminar un agente que tiene chats activos')
+        throw new Error('Cannot delete an agent that has active chats')
     }
 
     await softDeleteDocument(COLLECTION_NAME, id)
 }
 
-// Buscar agentes por texto
+// Search agents by text
 export async function searchAgents(
     searchTerm: string,
     filters: {
@@ -256,7 +256,7 @@ export async function searchAgents(
         value: unknown
     }> = []
 
-    // Aplicar filtros adicionales
+    // Apply additional filters
     if (filters.categoryId) {
         whereConditions.push({ field: 'categoryId', operator: '==', value: filters.categoryId })
     }
@@ -281,7 +281,7 @@ export async function searchAgents(
         }
     )
 
-    // Obtener categorías para cada agente
+    // Get categories for each agent
     const agentsWithCategories: AgentWithCategory[] = []
 
     for (const agent of agents) {
@@ -300,7 +300,7 @@ export async function searchAgents(
     }
 }
 
-// Obtener agentes por categoría
+// Get agents by category
 export async function getAgentsByCategory(categoryId: string): Promise<AgentWithCategory[]> {
     const querySnapshot = await firestoreClient
         .collection(COLLECTION_NAME)
@@ -320,7 +320,7 @@ export async function getAgentsByCategory(categoryId: string): Promise<AgentWith
     }))
 }
 
-// Verificar si un usuario puede usar un agente
+// Check if a user can use an agent
 export async function checkUserCanUseAgent(userId: string, agentId: string): Promise<boolean> {
     const userAgentQuery = await firestoreClient
         .collection('userAgents')
@@ -336,7 +336,7 @@ export async function checkUserCanUseAgent(userId: string, agentId: string): Pro
 
     const userAgent = firstDoc.data()
 
-    // Verificar si no ha expirado
+    // Check if it has not expired
     if (userAgent.expiresAt && userAgent.expiresAt.toDate() < new Date()) {
         return false
     }
@@ -344,9 +344,9 @@ export async function checkUserCanUseAgent(userId: string, agentId: string): Pro
     return true
 }
 
-// Obtener agentes disponibles para un usuario
+// Get available agents for a user
 export async function getAvailableAgentsForUser(userId: string): Promise<AgentWithCategory[]> {
-    // Obtener los agentes que el usuario ha pagado
+    // Get the agents that the user has paid for
     const userAgentsQuery = await firestoreClient
         .collection('userAgents')
         .where('userId', '==', userId)
@@ -362,7 +362,7 @@ export async function getAvailableAgentsForUser(userId: string): Promise<AgentWi
 
     if (agentIds.length === 0) return []
 
-    // Obtener los agentes
+    // Get the agents
     const agentsWithCategories: AgentWithCategory[] = []
 
     for (const agentId of agentIds) {

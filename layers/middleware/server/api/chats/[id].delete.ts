@@ -6,40 +6,40 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
         const chatId = getRouterParam(event, 'id')
         const userId = getHeader(event, 'x-user-id') as string
 
-        // Validar que se proporcione el userId
+        // Validate that userId is provided
         if (!userId) {
             return {
                 success: false,
-                message: 'Usuario requerido',
-                error: 'Header x-user-id es obligatorio'
+                message: 'User required',
+                error: 'x-user-id header is mandatory'
             }
         }
 
         if (!chatId) {
             return {
                 success: false,
-                message: 'ID de chat requerido',
-                error: 'No se proporcionó el ID del chat'
+                message: 'Chat ID required',
+                error: 'Chat ID was not provided'
             }
         }
 
-        // Desactivar el chat (soft delete)
+        // Deactivate the chat (soft delete)
         await deactivateChat(chatId, userId)
 
         return {
             success: true,
-            message: 'Chat eliminado exitosamente',
+            message: 'Chat deleted successfully',
             data: null
         }
     } catch (error) {
-        console.error('Error al eliminar chat:', error)
+        console.error('Error deleting chat:', error)
 
-        // Manejar errores específicos
+        // Handle specific errors
         if (error instanceof Error) {
-            if (error.message.includes('no encontrado o no tienes permisos')) {
+            if (error.message.includes('not found or you do not have permission')) {
                 return {
                     success: false,
-                    message: 'Chat no encontrado',
+                    message: 'Chat not found',
                     error: error.message
                 }
             }
@@ -47,8 +47,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<null>> => {
 
         return {
             success: false,
-            message: 'Error al eliminar el chat',
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            message: 'Error deleting chat',
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })
