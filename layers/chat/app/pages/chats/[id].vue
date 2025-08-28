@@ -350,19 +350,21 @@ const handleSendMessage = async (content: string) => {
     // Enviar el mensaje al servidor
     await sendMessage(content, chat.value.id);
 
-    // Si es el primer mensaje del chat y no tiene título, actualizarlo
+    // Si es el primer mensaje del chat y no tiene título, generar uno con IA
     if (chat.value && (!chat.value.title || chat.value.title === 'Nuevo chat') && messages.value.length === 1) {
-      try {
-        const titleContent = content.length > 50 ? content.substring(0, 50) + '...' : content;
-        await apiFetch(`/api/chats/${chat.value.id}`, {
-          method: 'PATCH',
-          body: { title: titleContent }
-        });
-        // Actualizar el título localmente
-        chat.value.title = titleContent;
-      } catch (err) {
-        logger.warn('No se pudo actualizar el título del chat', { error: err });
-      }
+      // La llamada se hace en segundo plano para no bloquear la UI
+      apiFetch<{ success: boolean, data?: { title: string } }>(`/api/chats/${chat.value.id}/generate-title`, {
+        method: 'POST'
+      }).then(response => {
+        if (response.success && response.data?.title && chat.value) {
+          // Actualizar el título localmente en el chat actual
+          chat.value.title = response.data.title;
+          // Refrescar la lista de chats para que se muestre el nuevo título
+          fetchChats();
+        }
+      }).catch(err => {
+        logger.warn('La generación de título con IA falló, se usará un título por defecto.', { error: err });
+      });
     }
   } catch (err) {
     logger.error("Error al enviar el mensaje", err, {
