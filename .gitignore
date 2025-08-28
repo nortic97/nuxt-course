@@ -22,3 +22,6 @@ logs
 .env
 .env.*
 !.env.example
+./layers/middleware/server/firebaseKey.json
+.gitignore
+layers/middleware/server/firebaseKey.json
