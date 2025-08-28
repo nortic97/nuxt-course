@@ -215,13 +215,12 @@ async function sendMessage(
 
 // Cargar el chat o crear uno nuevo
 async function loadChat() {
-  if (isNewChat) {
-    // Para un nuevo chat, creamos uno nuevo
-    try {
-      isLoading.value = true;
-      error.value = null;
+  isLoading.value = true;
+  error.value = null;
 
-      // Crear un nuevo chat
+  try {
+    if (isNewChat) {
+      // Para un nuevo chat, creamos uno nuevo
       const newChat = await createNewChat();
       if (newChat) {
         chat.value = newChat;
@@ -229,57 +228,43 @@ async function loadChat() {
       } else {
         throw new Error("No se pudo crear un nuevo chat");
       }
-    } catch (err) {
+    } else {
+      // Para un chat existente, lo cargamos
+      // Primero, intentar encontrarlo en la lista de chats ya cargada
+      let loadedChat = chats.value.find((c) => c.id === chatId) as ChatWithMessages | undefined;
+
+      // Si no está o no tiene mensajes, buscarlo en la API
+      if (!loadedChat || !loadedChat.messages || loadedChat.messages.length === 0) {
+        const response = await apiFetch<{ data: ChatWithMessages }>(
+          `/api/chats/${chatId}`
+        );
+        if (response?.data) {
+          loadedChat = response.data;
+          // Actualizar la lista global de chats para consistencia
+          const index = chats.value.findIndex(c => c.id === chatId);
+          if (index !== -1) {
+            chats.value[index] = { ...chats.value[index], ...loadedChat };
+          } else {
+            chats.value.unshift(loadedChat);
+          }
+        }
+      }
+
+      if (loadedChat) {
+        chat.value = loadedChat;
+        messages.value = loadedChat.messages || [];
+      } else {
+        throw new Error(`No se pudo encontrar el chat con ID: ${chatId}`);
+      }
+    }
+  } catch (err) {
     logger.error("Error al cargar el chat", err, {
       chatId: chatId,
       isNewChat: isNewChat
     });
-    error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo más tarde.";
-    } finally {
-      isLoading.value = false;
-    }
-  } else {
-    // Para un chat existente, usamos prefetchChatMessages
-    try {
-      isLoading.value = true;
-
-      // Primero intentamos cargar desde los chats ya cargados
-      const existingChat = chats.value.find((c) => c.id === chatId);
-
-      if (existingChat) {
-        // Si encontramos el chat en la lista, usamos esos datos
-        chat.value = { ...existingChat, messages: existingChat.messages || [] };
-        messages.value = existingChat.messages || [];
-
-        // Luego intentamos cargar los mensajes más recientes
-        await prefetchChatMessages();
-
-        // Actualizamos con los datos más recientes si están disponibles
-        const updatedChat = chats.value.find((c) => c.id === chatId);
-        if (updatedChat) {
-          chat.value = { ...updatedChat, messages: updatedChat.messages || [] };
-          messages.value = updatedChat.messages || [];
-        }
-      } else {
-        // Si no encontramos el chat, intentamos cargarlo directamente
-        const response = await apiFetch<{ data: ChatWithMessages }>(
-          `/api/chats/${chatId}`
-        );
-
-        if (response?.data) {
-          chat.value = response.data;
-          messages.value = response.data.messages || [];
-        }
-      }
-    } catch (err) {
-      logger.error("Error al cargar el chat", err, {
-        chatId: chatId,
-        isNewChat: isNewChat
-      });
-      error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo.";
-    } finally {
-      isLoading.value = false;
-    }
+    error.value = "No se pudo cargar el chat. Por favor, inténtalo de nuevo.";
+  } finally {
+    isLoading.value = false;
   }
 }
 
