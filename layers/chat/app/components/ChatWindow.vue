@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Message, Chat } from "../../shared/types/types";
+import MarkdownRenderer from './MarkdownRenderer.vue';
 
 const props = defineProps<{
   messages: Message[];
@@ -146,10 +147,8 @@ watch(() => props.messages, pinToBottom, { deep: true });
             }"
           >
             <div class="message-content">
-              <MarkdownRenderer
-                :cache-key="message.id"
-                :content="message.content"
-              />
+              <MarkdownRenderer v-if="message.role === 'assistant'" :content="message.content" />
+              <p v-else>{{ message.content }}</p>
             </div>
           </div>
 

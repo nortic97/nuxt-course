@@ -11,6 +11,10 @@ export default defineNuxtConfig({
     './layers/marketing'
   ],
 
+  css: [
+    'highlight.js/styles/atom-one-dark.css'
+  ],
+
   modules: ['@nuxt/eslint', '@nuxt/image', '@nuxt/ui'],
 
   runtimeConfig: {
